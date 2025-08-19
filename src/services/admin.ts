@@ -581,6 +581,64 @@ class AdminApi {
     console.log("AdminApi.updatePlayingXI response:", response.data);
     return response.data;
   }
+
+  // Team Players
+  async getTeamPlayers(teamId: string) {
+    console.log("AdminApi.getTeamPlayers called with teamId:", teamId);
+    const response = await apiClient.get<AdminApiResponse<Player[]>>(
+      `/teams/${teamId}/players`
+    );
+    console.log("AdminApi.getTeamPlayers response:", response.data);
+    return response.data;
+  }
+
+  // Match Ball Updates
+  async updateMatchBall(matchId: string, ballData: any) {
+    console.log(
+      "AdminApi.updateMatchBall called with matchId:",
+      matchId,
+      "ballData:",
+      ballData
+    );
+    const response = await apiClient.post<AdminApiResponse<any>>(
+      `/matches/${matchId}/ball`,
+      ballData
+    );
+    console.log("AdminApi.updateMatchBall response:", response.data);
+    return response.data;
+  }
+
+  // Match Commentary
+  async updateMatchCommentary(matchId: string, commentary: string) {
+    console.log(
+      "AdminApi.updateMatchCommentary called with matchId:",
+      matchId,
+      "commentary:",
+      commentary
+    );
+    const response = await apiClient.post<AdminApiResponse<any>>(
+      `/matches/${matchId}/commentary`,
+      { commentary }
+    );
+    console.log("AdminApi.updateMatchCommentary response:", response.data);
+    return response.data;
+  }
+
+  // Match Odds
+  async updateMatchOdds(matchId: string, oddsData: any) {
+    console.log(
+      "AdminApi.updateMatchOdds called with matchId:",
+      matchId,
+      "oddsData:",
+      oddsData
+    );
+    const response = await apiClient.post<AdminApiResponse<any>>(
+      `/matches/${matchId}/odds`,
+      oddsData
+    );
+    console.log("AdminApi.updateMatchOdds response:", response.data);
+    return response.data;
+  }
 }
 
 export const adminApi = new AdminApi();

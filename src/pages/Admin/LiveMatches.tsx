@@ -60,7 +60,7 @@ interface LiveMatch {
   currentInnings: number;
   currentOver: number;
   currentBall: number;
-  score: {
+  score?: {
     teamA: { runs: number; wickets: number; overs: number };
     teamB: { runs: number; wickets: number; overs: number };
   };
@@ -86,6 +86,9 @@ interface LiveMatch {
   createdAt: string;
   updatedAt: string;
 }
+
+// Type for the API response
+type LiveMatchResponse = LiveMatch[] | { data: LiveMatch[] };
 
 const LiveMatches: React.FC = () => {
   const navigate = useNavigate();
@@ -225,9 +228,17 @@ const LiveMatches: React.FC = () => {
     return `${fullOvers}.${balls}`;
   };
 
+  // Get default score if not available
+  const getDefaultScore = () => ({
+    teamA: { runs: 0, wickets: 0, overs: 0 },
+    teamB: { runs: 0, wickets: 0, overs: 0 }
+  });
+
   console.log("liveMatchesData:", liveMatchesData);
-  const liveMatches = liveMatchesData?.data || [];
-  console.log("liveMatches:", liveMatches);
+  // Handle both AdminApiResponse structure and direct array response
+  const liveMatches = Array.isArray(liveMatchesData) 
+    ? liveMatchesData 
+    : liveMatchesData?.data || [];
 
   if (isLoading) {
     return (
@@ -315,210 +326,213 @@ const LiveMatches: React.FC = () => {
           </div>
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
-            {liveMatches.map((match: any) => (
-              <div
-                key={match._id}
-                className="bg-white rounded-lg shadow-lg overflow-hidden border border-gray-200 hover:shadow-xl transition-shadow"
-              >
-                {/* Match Header */}
-                <div className="bg-gradient-to-r from-green-600 to-green-700 p-4 text-white">
-                  <div className="flex items-center justify-between">
-                    <h3 className="font-semibold text-lg truncate">
-                      {match.name}
-                    </h3>
-                    <span
-                      className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(
-                        match.status
-                      )}`}
-                    >
-                      {getStatusDisplayText(match.status)}
-                    </span>
-                  </div>
-                  <div className="flex items-center mt-2 text-sm opacity-90">
-                    <FaMapMarkerAlt className="mr-1" />
-                    <span className="truncate">{match.venue}</span>
-                  </div>
-                </div>
-
-                {/* Teams and Score */}
-                <div className="p-4">
-                  <div className="flex items-center justify-between mb-4">
-                    <div className="text-center flex-1">
-                      <div className="font-semibold text-lg">
-                        {match.teamAId.name}
-                      </div>
-                      <div className="text-2xl font-bold text-green-600">
-                        {match.score.teamA.runs}/{match.score.teamA.wickets}
-                      </div>
-                      <div className="text-sm text-gray-600">
-                        {formatOver(match.score.teamA.overs)} overs
-                      </div>
+            {liveMatches.map((match: any) => {
+              const score = match.score || getDefaultScore();
+              return (
+                <div
+                  key={match._id}
+                  className="bg-white rounded-lg shadow-lg overflow-hidden border border-gray-200 hover:shadow-xl transition-shadow"
+                >
+                  {/* Match Header */}
+                  <div className="bg-gradient-to-r from-green-600 to-green-700 p-4 text-white">
+                    <div className="flex items-center justify-between">
+                      <h3 className="font-semibold text-lg truncate">
+                        {match.name}
+                      </h3>
+                      <span
+                        className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(
+                          match.status
+                        )}`}
+                      >
+                        {getStatusDisplayText(match.status)}
+                      </span>
                     </div>
-                    <div className="text-center mx-4">
-                      <div className="text-sm text-gray-500">VS</div>
-                      <div className="text-xs text-gray-400">
-                        {match.matchType} • {match.overs} overs
-                      </div>
-                    </div>
-                    <div className="text-center flex-1">
-                      <div className="font-semibold text-lg">
-                        {match.teamBId.name}
-                      </div>
-                      <div className="text-2xl font-bold text-green-600">
-                        {match.score.teamB.runs}/{match.score.teamB.wickets}
-                      </div>
-                      <div className="text-sm text-gray-600">
-                        {formatOver(match.score.teamB.overs)} overs
-                      </div>
+                    <div className="flex items-center mt-2 text-sm opacity-90">
+                      <FaMapMarkerAlt className="mr-1" />
+                      <span className="truncate">{match.venue}</span>
                     </div>
                   </div>
 
-                  {/* Match Progress */}
-                  <div className="bg-gray-50 rounded-lg p-3 mb-4">
-                    <div className="flex items-center justify-between text-sm">
-                      <span className="text-gray-600">Current Innings:</span>
-                      <span className="font-semibold">
-                        {match.currentInnings === 1
-                          ? `${match.teamAId.shortName} Batting`
-                          : `${match.teamBId.shortName} Batting`}
-                      </span>
+                  {/* Teams and Score */}
+                  <div className="p-4">
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="text-center flex-1">
+                        <div className="font-semibold text-lg">
+                          {match.teamAId.name}
+                        </div>
+                        <div className="text-2xl font-bold text-green-600">
+                          {score.teamA.runs}/{score.teamA.wickets}
+                        </div>
+                        <div className="text-sm text-gray-600">
+                          {formatOver(score.teamA.overs)} overs
+                        </div>
+                      </div>
+                      <div className="text-center mx-4">
+                        <div className="text-sm text-gray-500">VS</div>
+                        <div className="text-xs text-gray-400">
+                          {match.matchType} • {match.overs} overs
+                        </div>
+                      </div>
+                      <div className="text-center flex-1">
+                        <div className="font-semibold text-lg">
+                          {match.teamBId.name}
+                        </div>
+                        <div className="text-2xl font-bold text-green-600">
+                          {score.teamB.runs}/{score.teamB.wickets}
+                        </div>
+                        <div className="text-sm text-gray-600">
+                          {formatOver(score.teamB.overs)} overs
+                        </div>
+                      </div>
                     </div>
-                    <div className="flex items-center justify-between text-sm mt-1">
-                      <span className="text-gray-600">Current Over:</span>
-                      <span className="font-semibold">
-                        {match.currentOver}.{match.currentBall}
-                      </span>
-                    </div>
-                    {match.tossWinner && (
-                      <div className="flex items-center justify-between text-sm mt-1">
-                        <span className="text-gray-600">Toss:</span>
+
+                    {/* Match Progress */}
+                    <div className="bg-gray-50 rounded-lg p-3 mb-4">
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-gray-600">Current Innings:</span>
                         <span className="font-semibold">
-                          {match.tossWinner.shortName} chose to{" "}
-                          {match.tossDecision}
+                          {match.currentInnings === 1
+                            ? `${match.teamAId.shortName} Batting`
+                            : `${match.teamBId.shortName} Batting`}
                         </span>
                       </div>
-                    )}
-                  </div>
+                      <div className="flex items-center justify-between text-sm mt-1">
+                        <span className="text-gray-600">Current Over:</span>
+                        <span className="font-semibold">
+                          {match.currentOver}.{match.currentBall}
+                        </span>
+                      </div>
+                      {match.tossWinner && (
+                        <div className="flex items-center justify-between text-sm mt-1">
+                          <span className="text-gray-600">Toss:</span>
+                          <span className="font-semibold">
+                            {match.tossWinner.shortName} chose to{" "}
+                            {match.tossDecision}
+                          </span>
+                        </div>
+                      )}
+                    </div>
 
-                  {/* Action Buttons */}
-                  <div className="space-y-2">
-                    {/* Status Controls */}
-                    <div className="flex items-center space-x-1">
-                      {match.status === MatchStatus.IN_PROGRESS && (
-                        <>
-                          <button
-                            onClick={() =>
-                              handleStatusUpdate(match._id, MatchStatus.PAUSED)
-                            }
-                            className="flex-1 px-3 py-2 bg-yellow-500 text-white rounded text-sm hover:bg-yellow-600 flex items-center justify-center"
-                          >
-                            <FaPause className="mr-1" />
-                            Pause
-                          </button>
+                    {/* Action Buttons */}
+                    <div className="space-y-2">
+                      {/* Status Controls */}
+                      <div className="flex items-center space-x-1">
+                        {match.status === MatchStatus.IN_PROGRESS && (
+                          <>
+                            <button
+                              onClick={() =>
+                                handleStatusUpdate(match._id, MatchStatus.PAUSED)
+                              }
+                              className="flex-1 px-3 py-2 bg-yellow-500 text-white rounded text-sm hover:bg-yellow-600 flex items-center justify-center"
+                            >
+                              <FaPause className="mr-1" />
+                              Pause
+                            </button>
+                            <button
+                              onClick={() =>
+                                handleStatusUpdate(
+                                  match._id,
+                                  MatchStatus.COMPLETED
+                                )
+                              }
+                              className="flex-1 px-3 py-2 bg-red-500 text-white rounded text-sm hover:bg-red-600 flex items-center justify-center"
+                            >
+                              <FaStop className="mr-1" />
+                              End
+                            </button>
+                          </>
+                        )}
+                        {match.status === MatchStatus.PAUSED && (
                           <button
                             onClick={() =>
                               handleStatusUpdate(
                                 match._id,
-                                MatchStatus.COMPLETED
+                                MatchStatus.IN_PROGRESS
                               )
                             }
-                            className="flex-1 px-3 py-2 bg-red-500 text-white rounded text-sm hover:bg-red-600 flex items-center justify-center"
+                            className="w-full px-3 py-2 bg-green-500 text-white rounded text-sm hover:bg-green-600 flex items-center justify-center"
                           >
-                            <FaStop className="mr-1" />
-                            End
+                            <FaPlay className="mr-1" />
+                            Resume
                           </button>
-                        </>
-                      )}
-                      {match.status === MatchStatus.PAUSED && (
-                        <button
-                          onClick={() =>
-                            handleStatusUpdate(
-                              match._id,
-                              MatchStatus.IN_PROGRESS
-                            )
-                          }
-                          className="w-full px-3 py-2 bg-green-500 text-white rounded text-sm hover:bg-green-600 flex items-center justify-center"
-                        >
-                          <FaPlay className="mr-1" />
-                          Resume
-                        </button>
-                      )}
-                      {match.status === MatchStatus.SCHEDULED && (
-                        <button
-                          onClick={() =>
-                            handleStatusUpdate(match._id, MatchStatus.TOSS)
-                          }
-                          className="w-full px-3 py-2 bg-blue-500 text-white rounded text-sm hover:bg-blue-600 flex items-center justify-center"
-                        >
-                          <FaPlay className="mr-1" />
-                          Start Toss
-                        </button>
-                      )}
-                      {match.status === MatchStatus.TOSS && (
-                        <button
-                          onClick={() =>
-                            handleStatusUpdate(
-                              match._id,
-                              MatchStatus.IN_PROGRESS
-                            )
-                          }
-                          className="w-full px-3 py-2 bg-green-500 text-white rounded text-sm hover:bg-green-600 flex items-center justify-center"
-                        >
-                          <FaPlay className="mr-1" />
-                          Start Match
-                        </button>
-                      )}
-                    </div>
+                        )}
+                        {match.status === MatchStatus.SCHEDULED && (
+                          <button
+                            onClick={() =>
+                              handleStatusUpdate(match._id, MatchStatus.TOSS)
+                            }
+                            className="w-full px-3 py-2 bg-blue-500 text-white rounded text-sm hover:bg-blue-600 flex items-center justify-center"
+                          >
+                            <FaPlay className="mr-1" />
+                            Start Toss
+                          </button>
+                        )}
+                        {match.status === MatchStatus.TOSS && (
+                          <button
+                            onClick={() =>
+                              handleStatusUpdate(
+                                match._id,
+                                MatchStatus.IN_PROGRESS
+                              )
+                            }
+                            className="w-full px-3 py-2 bg-green-500 text-white rounded text-sm hover:bg-green-600 flex items-center justify-center"
+                          >
+                            <FaPlay className="mr-1" />
+                            Start Match
+                          </button>
+                        )}
+                      </div>
 
-                    {/* Management Actions */}
-                    <div className="grid grid-cols-2 gap-2">
-                      <button
-                        onClick={() => handleMatchAction(match, "score")}
-                        className="px-3 py-2 bg-blue-600 text-white rounded text-sm hover:bg-blue-700 flex items-center justify-center"
-                      >
-                        <FaRocket className="mr-1" />
-                        Ball Update
-                      </button>
-                      <button
-                        onClick={() => handleMatchAction(match, "commentary")}
-                        className="px-3 py-2 bg-purple-600 text-white rounded text-sm hover:bg-purple-700 flex items-center justify-center"
-                      >
-                        <FaComment className="mr-1" />
-                        Commentary
-                      </button>
-                      <button
-                        onClick={() => handleMatchAction(match, "squad")}
-                        className="px-3 py-2 bg-indigo-600 text-white rounded text-sm hover:bg-indigo-700 flex items-center justify-center"
-                      >
-                        <FaUserFriends className="mr-1" />
-                        Squad
-                      </button>
-                      <button
-                        onClick={() => handleMatchAction(match, "scorecard")}
-                        className="px-3 py-2 bg-green-600 text-white rounded text-sm hover:bg-green-700 flex items-center justify-center"
-                      >
-                        <FaChartBar className="mr-1" />
-                        Scorecard
-                      </button>
-                      <button
-                        onClick={() => handleMatchAction(match, "venue")}
-                        className="px-3 py-2 bg-orange-600 text-white rounded text-sm hover:bg-orange-700 flex items-center justify-center"
-                      >
-                        <FaMapMarkerAlt className="mr-1" />
-                        Venue
-                      </button>
-                      <button
-                        onClick={() => handleMatchAction(match, "details")}
-                        className="px-3 py-2 bg-gray-600 text-white rounded text-sm hover:bg-gray-700 flex items-center justify-center"
-                      >
-                        <FaEye className="mr-1" />
-                        Details
-                      </button>
+                      {/* Management Actions */}
+                      <div className="grid grid-cols-2 gap-2">
+                        <button
+                          onClick={() => handleMatchAction(match, "score")}
+                          className="px-3 py-2 bg-blue-600 text-white rounded text-sm hover:bg-blue-700 flex items-center justify-center"
+                        >
+                          <FaRocket className="mr-1" />
+                          Ball Update
+                        </button>
+                        <button
+                          onClick={() => handleMatchAction(match, "commentary")}
+                          className="px-3 py-2 bg-purple-600 text-white rounded text-sm hover:bg-purple-700 flex items-center justify-center"
+                        >
+                          <FaComment className="mr-1" />
+                          Commentary
+                        </button>
+                        <button
+                          onClick={() => handleMatchAction(match, "squad")}
+                          className="px-3 py-2 bg-indigo-600 text-white rounded text-sm hover:bg-indigo-700 flex items-center justify-center"
+                        >
+                          <FaUserFriends className="mr-1" />
+                          Squad
+                        </button>
+                        <button
+                          onClick={() => handleMatchAction(match, "scorecard")}
+                          className="px-3 py-2 bg-green-600 text-white rounded text-sm hover:bg-green-700 flex items-center justify-center"
+                        >
+                          <FaChartBar className="mr-1" />
+                          Scorecard
+                        </button>
+                        <button
+                          onClick={() => handleMatchAction(match, "venue")}
+                          className="px-3 py-2 bg-orange-600 text-white rounded text-sm hover:bg-orange-700 flex items-center justify-center"
+                        >
+                          <FaMapMarkerAlt className="mr-1" />
+                          Venue
+                        </button>
+                        <button
+                          onClick={() => handleMatchAction(match, "details")}
+                          className="px-3 py-2 bg-gray-600 text-white rounded text-sm hover:bg-gray-700 flex items-center justify-center"
+                        >
+                          <FaEye className="mr-1" />
+                          Details
+                        </button>
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>

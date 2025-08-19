@@ -260,7 +260,7 @@ const MatchDetail = () => {
               Set Scheduled
             </button>
             <button
-              onClick={() => updateStatusMutation.mutate("live")}
+              onClick={() => updateStatusMutation.mutate("in_progress")}
               className="btn-primary"
               disabled={updateStatusMutation.isPending}
             >

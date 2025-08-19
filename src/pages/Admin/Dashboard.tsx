@@ -23,6 +23,27 @@ import {
   FaShieldAlt,
   FaBell,
   FaExclamationTriangle,
+  FaCheckCircle,
+  FaClock,
+  FaMapMarkerAlt,
+  FaFlag,
+  FaBolt,
+  FaCalculator,
+  FaHistory,
+  FaBookmark,
+  FaShare,
+  FaDownload,
+  FaPrint,
+  FaCog as FaSettings,
+  FaInfoCircle,
+  FaQuestionCircle,
+  FaArrowRight,
+  FaArrowLeft,
+  FaSearch,
+  FaFilter,
+  FaSort,
+  FaSortUp,
+  FaSortDown,
 } from "react-icons/fa";
 import { adminApi } from "../../services/admin";
 
@@ -39,6 +60,8 @@ interface DashboardStats {
 
 const AdminDashboard: React.FC = () => {
   const [selectedTimeframe, setSelectedTimeframe] = useState("today");
+  const [searchTerm, setSearchTerm] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
 
   // Debug logging
   console.log("AdminDashboard component rendered");
@@ -63,7 +86,7 @@ const AdminDashboard: React.FC = () => {
           .then((res) => ({ total: res.data.total || 0 })),
         adminApi
           .getLiveMatches()
-          .then((res) => ({ total: res.data.length || 0 })),
+          .then((res) => ({ total: Array.isArray(res) ? res.length : res.data?.length || 0 })),
         adminApi
           .getTeams({ limit: 1 })
           .then((res) => ({ total: res.data.total || 0 })),
@@ -100,405 +123,476 @@ const AdminDashboard: React.FC = () => {
   // Fetch recent matches
   const { data: recentMatches, isLoading: matchesLoading } = useQuery({
     queryKey: ["recent-matches"],
-    queryFn: () => adminApi.getMatches({ limit: 5, sort: "-createdAt" }),
-  });
-
-  // Fetch system health
-  const { data: systemHealth, isLoading: healthLoading } = useQuery({
-    queryKey: ["system-health"],
     queryFn: async () => {
-      const [scraperHealth, selectorHealth] = await Promise.all([
-        adminApi.getScraperHealth(),
-        adminApi.getSelectorHealth(),
-      ]);
-      return { scraper: scraperHealth.data, selector: selectorHealth.data };
+      const response = await adminApi.getMatches({ limit: 5 });
+      return response.data;
     },
   });
 
-  // Quick actions
-  const quickActions = [
-    {
-      title: "Create Match",
-      description: "Schedule a new cricket match",
-      icon: FaPlus,
-      link: "/admin/matches/create",
-      color: "bg-green-500",
+  // Fetch live matches
+  const { data: liveMatches, isLoading: liveMatchesLoading } = useQuery({
+    queryKey: ["live-matches"],
+    queryFn: async () => {
+      const response = await adminApi.getLiveMatches();
+      return Array.isArray(response) ? response : response.data || [];
     },
-    {
-      title: "Manage Teams",
-      description: "Add or update team information",
-      icon: FaTrophy,
-      link: "/admin/teams",
-      color: "bg-blue-500",
-    },
-    {
-      title: "Add Players",
-      description: "Register new players",
-      icon: FaUsers,
-      link: "/admin/players",
-      color: "bg-purple-500",
-    },
-    {
-      title: "Manage Users",
-      description: "User management and permissions",
-      icon: FaUsers,
-      link: "/admin/users",
-      color: "bg-orange-500",
-    },
-    {
-      title: "AI Agents",
-      description: "Monitor and control AI agents",
-      icon: FaRocket,
-      link: "/admin/system/agents",
-      color: "bg-red-500",
-    },
-    {
-      title: "System Settings",
-      description: "Configure system parameters",
-      icon: FaCog,
-      link: "/admin/settings",
-      color: "bg-gray-500",
-    },
-  ];
+    refetchInterval: 30000, // Refresh every 30 seconds
+  });
 
-  const handleGlobalCommand = async (command: string) => {
-    try {
-      await adminApi.executeGlobalCommand({ command });
-      toast.success(`Command "${command}" executed successfully`);
-    } catch (error: any) {
-      toast.error(error.response?.data?.message || "Failed to execute command");
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case "in_progress":
+        return "bg-red-100 text-red-800";
+      case "scheduled":
+        return "bg-yellow-100 text-yellow-800";
+      case "completed":
+        return "bg-green-100 text-green-800";
+      case "cancelled":
+        return "bg-gray-100 text-gray-800";
+      default:
+        return "bg-gray-100 text-gray-800";
     }
   };
 
-  const handleAutomationForAll = async () => {
-    try {
-      await adminApi.executeAutomationForAll();
-      toast.success("Automation started for all matches");
-    } catch (error: any) {
-      toast.error("Failed to start automation");
+  const getStatusDisplayText = (status: string) => {
+    switch (status) {
+      case "in_progress":
+        return "LIVE";
+      case "scheduled":
+        return "SCHEDULED";
+      case "completed":
+        return "COMPLETED";
+      case "cancelled":
+        return "CANCELLED";
+      default:
+        return status.toUpperCase();
     }
   };
 
-  if (statsLoading || matchesLoading || healthLoading) {
-    return (
-      <div className="p-6">
-        <div className="animate-pulse">
-          <div className="h-8 bg-gray-200 rounded w-1/4 mb-6"></div>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-            {[...Array(4)].map((_, i) => (
-              <div key={i} className="bg-white p-6 rounded-lg shadow">
-                <div className="h-4 bg-gray-200 rounded w-1/2 mb-2"></div>
-                <div className="h-8 bg-gray-200 rounded w-1/3"></div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-    );
-  }
+  const formatTime = (dateString: string) => {
+    return new Date(dateString).toLocaleTimeString("en-US", {
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  };
+
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+    });
+  };
 
   return (
-    <div className="p-6">
+    <div className="min-h-screen bg-gray-50">
       {/* Header */}
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900 mb-2">
-          Admin Dashboard
-        </h1>
-        <p className="text-gray-600">
-          Welcome back! Here's what's happening with your cricket platform.
-        </p>
-      </div>
-
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-        <div className="bg-white p-6 rounded-lg shadow-lg border-l-4 border-green-500">
-          <div className="flex items-center">
-            <div className="p-2 bg-green-100 rounded-lg">
-              <FaTrophy className="h-6 w-6 text-green-600" />
-            </div>
-            <div className="ml-4">
-              <p className="text-sm font-medium text-gray-600">Total Matches</p>
-              <p className="text-2xl font-bold text-gray-900">
-                {stats?.totalMatches || 0}
+      <div className="bg-white shadow-sm border-b border-gray-200">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900">Admin Dashboard</h1>
+              <p className="text-gray-600 mt-2">
+                Manage cricket matches, teams, players, and system settings
               </p>
             </div>
-          </div>
-          <div className="mt-4">
-            <span className="text-sm text-green-600 font-medium">
-              {stats?.liveMatches || 0} Live
-            </span>
-          </div>
-        </div>
-
-        <div className="bg-white p-6 rounded-lg shadow-lg border-l-4 border-blue-500">
-          <div className="flex items-center">
-            <div className="p-2 bg-blue-100 rounded-lg">
-              <FaUsers className="h-6 w-6 text-blue-600" />
+            <div className="flex items-center space-x-4">
+              <button className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center">
+                <FaPlus className="mr-2" />
+                Create Match
+              </button>
+              <button className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 flex items-center">
+                <FaRocket className="mr-2" />
+                Live Scoring
+              </button>
             </div>
-            <div className="ml-4">
-              <p className="text-sm font-medium text-gray-600">Total Users</p>
-              <p className="text-2xl font-bold text-gray-900">
-                {stats?.totalUsers || 0}
-              </p>
-            </div>
-          </div>
-          <div className="mt-4">
-            <span className="text-sm text-blue-600 font-medium">
-              {stats?.totalTeams || 0} Teams
-            </span>
-          </div>
-        </div>
-
-        <div className="bg-white p-6 rounded-lg shadow-lg border-l-4 border-purple-500">
-          <div className="flex items-center">
-            <div className="p-2 bg-purple-100 rounded-lg">
-              <FaRocket className="h-6 w-6 text-purple-600" />
-            </div>
-            <div className="ml-4">
-              <p className="text-sm font-medium text-gray-600">Active Agents</p>
-              <p className="text-2xl font-bold text-gray-900">
-                {stats?.activeAgents || 0}
-              </p>
-            </div>
-          </div>
-          <div className="mt-4">
-            <span className="text-sm text-purple-600 font-medium">
-              {stats?.totalPlayers || 0} Players
-            </span>
-          </div>
-        </div>
-
-        <div className="bg-white p-6 rounded-lg shadow-lg border-l-4 border-orange-500">
-          <div className="flex items-center">
-            <div className="p-2 bg-orange-100 rounded-lg">
-              <FaNewspaper className="h-6 w-6 text-orange-600" />
-            </div>
-            <div className="ml-4">
-              <p className="text-sm font-medium text-gray-600">News Articles</p>
-              <p className="text-2xl font-bold text-gray-900">
-                {stats?.totalNews || 0}
-              </p>
-            </div>
-          </div>
-          <div className="mt-4">
-            <span className="text-sm text-orange-600 font-medium">
-              {stats?.totalTournaments || 0} Tournaments
-            </span>
           </div>
         </div>
       </div>
 
-      {/* Quick Actions */}
-      <div className="mb-8">
-        <h2 className="text-xl font-semibold text-gray-900 mb-4">
-          Quick Actions
-        </h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {quickActions.map((action, index) => (
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Stats Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+            <div className="flex items-center">
+              <div className="p-2 bg-red-100 rounded-lg">
+                <FaRocket className="h-6 w-6 text-red-600" />
+              </div>
+              <div className="ml-4">
+                <p className="text-sm font-medium text-gray-600">Live Matches</p>
+                <p className="text-2xl font-bold text-gray-900">
+                  {stats?.liveMatches || 0}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+            <div className="flex items-center">
+              <div className="p-2 bg-blue-100 rounded-lg">
+                <FaTrophy className="h-6 w-6 text-blue-600" />
+              </div>
+              <div className="ml-4">
+                <p className="text-sm font-medium text-gray-600">Total Matches</p>
+                <p className="text-2xl font-bold text-gray-900">
+                  {stats?.totalMatches || 0}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+            <div className="flex items-center">
+              <div className="p-2 bg-green-100 rounded-lg">
+                <FaUsers className="h-6 w-6 text-green-600" />
+              </div>
+              <div className="ml-4">
+                <p className="text-sm font-medium text-gray-600">Total Teams</p>
+                <p className="text-2xl font-bold text-gray-900">
+                  {stats?.totalTeams || 0}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+            <div className="flex items-center">
+              <div className="p-2 bg-purple-100 rounded-lg">
+                <FaChartLine className="h-6 w-6 text-purple-600" />
+              </div>
+              <div className="ml-4">
+                <p className="text-sm font-medium text-gray-600">Active Users</p>
+                <p className="text-2xl font-bold text-gray-900">
+                  {stats?.totalUsers || 0}
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Live Matches Section */}
+        <div className="mb-8">
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="text-2xl font-bold text-gray-900 flex items-center">
+              <FaRocket className="mr-3 text-red-600" />
+              Live Matches
+            </h2>
             <Link
-              key={index}
-              to={action.link}
-              className="bg-white p-6 rounded-lg shadow-lg hover:shadow-xl transition-shadow border border-gray-200"
+              to="/admin/matches/live"
+              className="text-blue-600 hover:text-blue-700 font-medium"
             >
-              <div className="flex items-center">
-                <div className={`p-3 rounded-lg ${action.color} text-white`}>
-                  <action.icon className="h-6 w-6" />
-                </div>
-                <div className="ml-4">
-                  <h3 className="text-lg font-semibold text-gray-900">
-                    {action.title}
-                  </h3>
-                  <p className="text-sm text-gray-600">{action.description}</p>
-                </div>
-              </div>
+              View All →
             </Link>
-          ))}
-        </div>
-      </div>
-
-      {/* System Health & Controls */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
-        {/* System Health */}
-        <div className="bg-white p-6 rounded-lg shadow-lg">
-          <h2 className="text-xl font-semibold text-gray-900 mb-4 flex items-center">
-            <FaServer className="mr-2 text-blue-500" />
-            System Health
-          </h2>
-          <div className="space-y-4">
-            <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-              <div className="flex items-center">
-                <FaNetworkWired className="mr-2 text-green-500" />
-                <span className="font-medium">Scraper Status</span>
-              </div>
-              <span
-                className={`px-2 py-1 rounded-full text-xs font-medium ${
-                  systemHealth?.scraper?.status === "healthy"
-                    ? "bg-green-100 text-green-800"
-                    : "bg-red-100 text-red-800"
-                }`}
-              >
-                {systemHealth?.scraper?.status || "Unknown"}
-              </span>
-            </div>
-            <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-              <div className="flex items-center">
-                <FaShieldAlt className="mr-2 text-blue-500" />
-                <span className="font-medium">Selector Status</span>
-              </div>
-              <span
-                className={`px-2 py-1 rounded-full text-xs font-medium ${
-                  systemHealth?.selector?.status === "healthy"
-                    ? "bg-green-100 text-green-800"
-                    : "bg-red-100 text-red-800"
-                }`}
-              >
-                {systemHealth?.selector?.status || "Unknown"}
-              </span>
-            </div>
           </div>
-        </div>
 
-        {/* Global Controls */}
-        <div className="bg-white p-6 rounded-lg shadow-lg">
-          <h2 className="text-xl font-semibold text-gray-900 mb-4 flex items-center">
-            <FaCog className="mr-2 text-purple-500" />
-            Global Controls
-          </h2>
-          <div className="space-y-3">
-            <button
-              onClick={() => handleGlobalCommand("refresh_all")}
-              className="w-full flex items-center justify-center px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
-            >
-              <FaSync className="mr-2" />
-              Refresh All Data
-            </button>
-            <button
-              onClick={handleAutomationForAll}
-              className="w-full flex items-center justify-center px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors"
-            >
-              <FaPlay className="mr-2" />
-              Start All Automation
-            </button>
-            <button
-              onClick={() => handleGlobalCommand("stop_all")}
-              className="w-full flex items-center justify-center px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors"
-            >
-              <FaStop className="mr-2" />
-              Stop All Agents
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {/* Recent Matches */}
-      <div className="bg-white p-6 rounded-lg shadow-lg">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-xl font-semibold text-gray-900">
-            Recent Matches
-          </h2>
-          <Link
-            to="/admin/matches"
-            className="text-blue-500 hover:text-blue-600 font-medium"
-          >
-            View All
-          </Link>
-        </div>
-        <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Match
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Status
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Date
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Actions
-                </th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {recentMatches?.data?.matches?.map((match: any) => (
-                <tr key={match.id} className="hover:bg-gray-50">
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div>
-                      <div className="text-sm font-medium text-gray-900">
-                        {match.team1?.name} vs {match.team2?.name}
-                      </div>
-                      <div className="text-sm text-gray-500">{match.venue}</div>
+          {liveMatchesLoading ? (
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+              <div className="animate-pulse">
+                <div className="h-4 bg-gray-200 rounded w-1/4 mb-4"></div>
+                <div className="space-y-3">
+                  {[1, 2, 3].map((i) => (
+                    <div key={i} className="h-12 bg-gray-200 rounded"></div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          ) : liveMatches && liveMatches.length > 0 ? (
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {liveMatches.slice(0, 4).map((match: any) => (
+                <div
+                  key={match._id}
+                  className="bg-white rounded-lg shadow-sm border border-gray-200 hover:shadow-md transition-shadow"
+                >
+                  <div className="p-6">
+                    <div className="flex items-center justify-between mb-4">
+                      <h3 className="text-lg font-semibold text-gray-900">
+                        {match.name}
+                      </h3>
+                      <span
+                        className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(
+                          match.status
+                        )}`}
+                      >
+                        {getStatusDisplayText(match.status)}
+                      </span>
                     </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span
-                      className={`px-2 py-1 text-xs font-medium rounded-full ${
-                        match.status === "live"
-                          ? "bg-red-100 text-red-800"
-                          : match.status === "upcoming"
-                          ? "bg-yellow-100 text-yellow-800"
-                          : "bg-gray-100 text-gray-800"
-                      }`}
-                    >
-                      {match.status}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {new Date(match.startTime).toLocaleDateString()}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="flex items-center space-x-4">
+                        <div className="text-center">
+                          <div className="font-semibold text-gray-900">
+                            {match.teamAId?.name}
+                          </div>
+                          <div className="text-sm text-gray-600">
+                            {match.score?.teamA?.runs || 0}/{match.score?.teamA?.wickets || 0}
+                          </div>
+                        </div>
+                        <div className="text-gray-500">VS</div>
+                        <div className="text-center">
+                          <div className="font-semibold text-gray-900">
+                            {match.teamBId?.name}
+                          </div>
+                          <div className="text-sm text-gray-600">
+                            {match.score?.teamB?.runs || 0}/{match.score?.teamB?.wickets || 0}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-between text-sm text-gray-600 mb-4">
+                      <div className="flex items-center">
+                        <FaMapMarkerAlt className="mr-1" />
+                        <span>{match.venue}</span>
+                      </div>
+                      <div className="flex items-center">
+                        <FaClock className="mr-1" />
+                        <span>{formatTime(match.startTime)}</span>
+                      </div>
+                    </div>
+
                     <div className="flex space-x-2">
                       <Link
-                        to={`/admin/matches/${match.id}`}
-                        className="text-blue-600 hover:text-blue-900"
+                        to={`/admin/matches/${match._id}/scoring`}
+                        className="flex-1 px-3 py-2 bg-blue-600 text-white rounded text-sm hover:bg-blue-700 text-center"
                       >
-                        <FaEye className="h-4 w-4" />
+                        <FaRocket className="inline mr-1" />
+                        Score
                       </Link>
                       <Link
-                        to={`/admin/matches/${match.id}/edit`}
-                        className="text-green-600 hover:text-green-900"
+                        to={`/admin/matches/${match._id}`}
+                        className="flex-1 px-3 py-2 bg-gray-600 text-white rounded text-sm hover:bg-gray-700 text-center"
                       >
-                        <FaEdit className="h-4 w-4" />
+                        <FaEye className="inline mr-1" />
+                        View
                       </Link>
                     </div>
-                  </td>
-                </tr>
+                  </div>
+                </div>
               ))}
-            </tbody>
-          </table>
+            </div>
+          ) : (
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-12 text-center">
+              <FaRocket className="mx-auto h-12 w-12 text-gray-400 mb-4" />
+              <h3 className="text-lg font-medium text-gray-900 mb-2">
+                No Live Matches
+              </h3>
+              <p className="text-gray-600">
+                There are currently no matches in progress.
+              </p>
+            </div>
+          )}
         </div>
-      </div>
 
-      {/* Alerts & Notifications */}
-      <div className="mt-8 bg-white p-6 rounded-lg shadow-lg">
-        <h2 className="text-xl font-semibold text-gray-900 mb-4 flex items-center">
-          <FaBell className="mr-2 text-yellow-500" />
-          System Alerts
-        </h2>
-        <div className="space-y-3">
-          <div className="flex items-center p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
-            <FaExclamationTriangle className="text-yellow-500 mr-3" />
-            <div>
-              <p className="text-sm font-medium text-yellow-800">
-                Scraper Performance Alert
-              </p>
-              <p className="text-xs text-yellow-600">
-                Some data sources are responding slowly
-              </p>
-            </div>
+        {/* Recent Matches Section */}
+        <div className="mb-8">
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="text-2xl font-bold text-gray-900 flex items-center">
+              <FaClock className="mr-3 text-blue-600" />
+              Recent Matches
+            </h2>
+            <Link
+              to="/admin/matches"
+              className="text-blue-600 hover:text-blue-700 font-medium"
+            >
+              View All →
+            </Link>
           </div>
-          <div className="flex items-center p-3 bg-blue-50 border border-blue-200 rounded-lg">
-            <FaBell className="text-blue-500 mr-3" />
-            <div>
-              <p className="text-sm font-medium text-blue-800">
-                New Match Scheduled
-              </p>
-              <p className="text-xs text-blue-600">
-                India vs Australia T20 match added to schedule
-              </p>
+
+          {matchesLoading ? (
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+              <div className="animate-pulse">
+                <div className="h-4 bg-gray-200 rounded w-1/4 mb-4"></div>
+                <div className="space-y-3">
+                  {[1, 2, 3, 4, 5].map((i) => (
+                    <div key={i} className="h-12 bg-gray-200 rounded"></div>
+                  ))}
+                </div>
+              </div>
             </div>
+          ) : (
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+              <div className="px-6 py-4 border-b border-gray-200">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-lg font-medium text-gray-900">
+                    Match History
+                  </h3>
+                  <div className="flex items-center space-x-4">
+                    <div className="relative">
+                      <FaSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                      <input
+                        type="text"
+                        placeholder="Search matches..."
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        className="pl-10 pr-4 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      />
+                    </div>
+                    <select
+                      value={statusFilter}
+                      onChange={(e) => setStatusFilter(e.target.value)}
+                      className="px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    >
+                      <option value="all">All Status</option>
+                      <option value="scheduled">Scheduled</option>
+                      <option value="in_progress">Live</option>
+                      <option value="completed">Completed</option>
+                      <option value="cancelled">Cancelled</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Match
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Teams
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Venue
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Date
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Status
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Actions
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {recentMatches?.map((match: any) => (
+                      <tr key={match.id} className="hover:bg-gray-50">
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm font-medium text-gray-900">
+                            {match.name}
+                          </div>
+                          <div className="text-sm text-gray-500">
+                            {match.format} • {match.overs} overs
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm text-gray-900">
+                            {match.team1?.name} vs {match.team2?.name}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          {match.venue}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          {formatDate(match.startTime)}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <span
+                            className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(
+                              match.status
+                            )}`}
+                          >
+                            {getStatusDisplayText(match.status)}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                          <div className="flex items-center space-x-2">
+                            <Link
+                              to={`/admin/matches/${match.id}`}
+                              className="text-blue-600 hover:text-blue-900"
+                            >
+                              <FaEye className="h-4 w-4" />
+                            </Link>
+                            <Link
+                              to={`/admin/matches/${match.id}/edit`}
+                              className="text-green-600 hover:text-green-900"
+                            >
+                              <FaEdit className="h-4 w-4" />
+                            </Link>
+                            {match.status === "scheduled" && (
+                              <Link
+                                to={`/admin/matches/${match.id}/scoring`}
+                                className="text-red-600 hover:text-red-900"
+                              >
+                                <FaRocket className="h-4 w-4" />
+                              </Link>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Quick Actions */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+            <div className="flex items-center mb-4">
+              <div className="p-2 bg-blue-100 rounded-lg">
+                <FaPlus className="h-6 w-6 text-blue-600" />
+              </div>
+              <h3 className="ml-3 text-lg font-medium text-gray-900">
+                Create Match
+              </h3>
+            </div>
+            <p className="text-gray-600 mb-4">
+              Schedule a new cricket match with teams, venue, and format.
+            </p>
+            <Link
+              to="/admin/matches/create"
+              className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+            >
+              Create Match
+              <FaArrowRight className="ml-2 h-4 w-4" />
+            </Link>
+          </div>
+
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+            <div className="flex items-center mb-4">
+              <div className="p-2 bg-green-100 rounded-lg">
+                <FaUsers className="h-6 w-6 text-green-600" />
+              </div>
+              <h3 className="ml-3 text-lg font-medium text-gray-900">
+                Manage Teams
+              </h3>
+            </div>
+            <p className="text-gray-600 mb-4">
+              Add, edit, and manage cricket teams and their players.
+            </p>
+            <Link
+              to="/admin/teams"
+              className="inline-flex items-center px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700"
+            >
+              Manage Teams
+              <FaArrowRight className="ml-2 h-4 w-4" />
+            </Link>
+          </div>
+
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+            <div className="flex items-center mb-4">
+              <div className="p-2 bg-purple-100 rounded-lg">
+                <FaCog className="h-6 w-6 text-purple-600" />
+              </div>
+              <h3 className="ml-3 text-lg font-medium text-gray-900">
+                System Settings
+              </h3>
+            </div>
+            <p className="text-gray-600 mb-4">
+              Configure system settings, user permissions, and preferences.
+            </p>
+            <Link
+              to="/admin/settings"
+              className="inline-flex items-center px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700"
+            >
+              Settings
+              <FaArrowRight className="ml-2 h-4 w-4" />
+            </Link>
           </div>
         </div>
       </div>
