@@ -1,0 +1,56 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    font-family: 'Inter', system-ui, sans-serif;
+  }
+  
+  body {
+    @apply bg-gray-50 text-gray-900;
+  }
+}
+
+@layer components {
+  .btn-primary {
+    @apply bg-cricket-green hover:bg-green-600 text-white font-medium py-2 px-4 rounded-lg transition-colors duration-200;
+  }
+  
+  .btn-secondary {
+    @apply bg-gray-200 hover:bg-gray-300 text-gray-800 font-medium py-2 px-4 rounded-lg transition-colors duration-200;
+  }
+  
+  .card {
+    @apply bg-white rounded-lg shadow-sm border border-gray-200 p-6;
+  }
+  
+  .input-field {
+    @apply w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-cricket-green focus:border-transparent;
+  }
+  
+  .live-indicator {
+    @apply inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800;
+  }
+  
+  .score-display {
+    @apply text-3xl font-bold text-cricket-dark;
+  }
+  
+  .team-name {
+    @apply text-lg font-semibold text-gray-800;
+  }
+  
+  .player-name {
+    @apply text-sm font-medium text-gray-700;
+  }
+  
+  .stats-value {
+    @apply text-2xl font-bold text-cricket-green;
+  }
+  
+  .stats-label {
+    @apply text-sm text-gray-600 uppercase tracking-wide;
+  }
+}
