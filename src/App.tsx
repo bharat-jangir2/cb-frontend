@@ -31,7 +31,16 @@ import LiveMatches from "./pages/Admin/LiveMatches";
 import MatchScoring from "./pages/Admin/MatchScoring";
 import MatchStats from "./pages/Admin/MatchStats";
 import MatchSquad from "./pages/Admin/MatchSquad";
+import MatchVenue from "./pages/Admin/MatchVenue";
+import MatchScorecard from "./pages/Admin/MatchScorecard";
 import AdminTeams from "./pages/Admin/Teams";
+import TeamDetail from "./pages/Admin/TeamDetail";
+import TeamPlayers from "./pages/Admin/TeamPlayers";
+import TeamEdit from "./pages/Admin/TeamEdit";
+import AdminPlayers from "./pages/Admin/Players";
+import PlayerDetail from "./pages/Admin/PlayerDetail";
+import PlayerEdit from "./pages/Admin/PlayerEdit";
+import PlayerStats from "./pages/Admin/PlayerStats";
 import AdminUsers from "./pages/Admin/Users";
 import AdminTournaments from "./pages/Admin/Tournaments";
 import AdminSeries from "./pages/Admin/Series";
@@ -155,12 +164,18 @@ function App() {
             <Route path="matches/:id/stats" element={<MatchStats />} />
             <Route path="matches/:id/squad" element={<MatchSquad />} />
             <Route path="matches/:id/commentary" element={<MatchScoring />} />
-            <Route path="matches/:id/venue" element={<MatchScoring />} />
-            <Route path="matches/:id/scorecard" element={<MatchStats />} />
+            <Route path="matches/:id/venue" element={<MatchVenue />} />
+            <Route path="matches/:id/scorecard" element={<MatchScorecard />} />
             <Route path="teams" element={<AdminTeams />} />
             <Route path="teams/create" element={<AdminTeams />} />
-            <Route path="teams/:id" element={<AdminTeams />} />
-            <Route path="teams/:id/edit" element={<AdminTeams />} />
+            <Route path="teams/:id" element={<TeamDetail />} />
+            <Route path="teams/:id/edit" element={<TeamEdit />} />
+            <Route path="teams/:id/players" element={<TeamPlayers />} />
+            <Route path="players" element={<AdminPlayers />} />
+            <Route path="players/create" element={<AdminPlayers />} />
+            <Route path="players/:id" element={<PlayerDetail />} />
+            <Route path="players/:id/edit" element={<PlayerEdit />} />
+            <Route path="players/stats" element={<PlayerStats />} />
             <Route path="users" element={<AdminUsers />} />
             <Route path="users/create" element={<AdminUsers />} />
             <Route path="users/:id" element={<AdminUsers />} />

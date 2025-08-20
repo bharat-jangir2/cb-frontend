@@ -187,9 +187,9 @@ const AdminTeams: React.FC = () => {
                 </div>
               </div>
             ))
-          : teamsData?.data?.teams?.map((team: any) => (
+          : (teamsData as any)?.data?.map((team: any) => (
               <div
-                key={team.id}
+                key={team._id}
                 className="bg-white rounded-lg shadow-lg hover:shadow-xl transition-shadow"
               >
                 <div className="p-6">
@@ -214,7 +214,7 @@ const AdminTeams: React.FC = () => {
                         <FaEdit className="h-4 w-4" />
                       </button>
                       <button
-                        onClick={() => handleDeleteTeam(team.id)}
+                        onClick={() => handleDeleteTeam(team._id)}
                         className="p-1 text-red-600 hover:text-red-900"
                         title="Delete Team"
                       >
@@ -227,7 +227,7 @@ const AdminTeams: React.FC = () => {
                   <div className="space-y-2">
                     <div className="flex items-center text-sm text-gray-600">
                       <FaGlobe className="mr-2" />
-                      <span>{team.country}</span>
+                      <span>{team.name}</span>
                     </div>
                     {team.description && (
                       <p className="text-sm text-gray-600 line-clamp-2">
@@ -258,13 +258,13 @@ const AdminTeams: React.FC = () => {
                   <div className="mt-4 pt-4 border-t border-gray-200">
                     <div className="flex space-x-2">
                       <Link
-                        to={`/admin/teams/${team.id}`}
+                        to={`/admin/teams/${team._id}`}
                         className="flex-1 text-center px-3 py-2 bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100 transition-colors text-sm"
                       >
                         View Details
                       </Link>
                       <Link
-                        to={`/admin/teams/${team.id}/players`}
+                        to={`/admin/teams/${team._id}/players`}
                         className="flex-1 text-center px-3 py-2 bg-green-50 text-green-700 rounded-lg hover:bg-green-100 transition-colors text-sm"
                       >
                         Players
@@ -277,7 +277,7 @@ const AdminTeams: React.FC = () => {
       </div>
 
       {/* Pagination */}
-      {teamsData?.data?.totalPages > 1 && (
+      {(teamsData as any)?.data?.totalPages > 1 && (
         <div className="mt-8 flex justify-center">
           <nav className="flex items-center space-x-2">
             <button
@@ -288,7 +288,7 @@ const AdminTeams: React.FC = () => {
               Previous
             </button>
             {Array.from(
-              { length: teamsData?.data?.totalPages || 1 },
+              { length: (teamsData as any)?.data?.totalPages || 1 },
               (_, i) => i + 1
             ).map((page) => (
               <button
@@ -306,7 +306,8 @@ const AdminTeams: React.FC = () => {
             <button
               onClick={() => handlePageChange((filters.page || 1) + 1)}
               disabled={
-                (filters.page || 1) >= (teamsData?.data?.totalPages || 1)
+                (filters.page || 1) >=
+                ((teamsData as any)?.data?.totalPages || 1)
               }
               className="px-3 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
             >
@@ -318,7 +319,8 @@ const AdminTeams: React.FC = () => {
 
       {/* Empty State */}
       {!isLoading &&
-        (!teamsData?.data?.teams || teamsData.data.teams.length === 0) && (
+        (!(teamsData as any)?.data?.data ||
+          (teamsData as any)?.data?.data?.length === 0) && (
           <div className="text-center py-12">
             <FaTrophy className="mx-auto h-12 w-12 text-gray-400" />
             <h3 className="mt-2 text-sm font-medium text-gray-900">
@@ -358,7 +360,7 @@ const AdminTeams: React.FC = () => {
                 };
 
                 if (editingTeam) {
-                  handleUpdateTeam(editingTeam.id, data);
+                  handleUpdateTeam(editingTeam._id, data);
                 } else {
                   handleCreateTeam(data);
                 }
@@ -372,7 +374,7 @@ const AdminTeams: React.FC = () => {
                   <input
                     type="text"
                     name="name"
-                    defaultValue={editingTeam?.name}
+                    defaultValue={editingTeam?.name || ""}
                     required
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   />
@@ -385,7 +387,7 @@ const AdminTeams: React.FC = () => {
                   <input
                     type="text"
                     name="shortName"
-                    defaultValue={editingTeam?.shortName}
+                    defaultValue={editingTeam?.shortName || ""}
                     required
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   />
@@ -397,7 +399,7 @@ const AdminTeams: React.FC = () => {
                   </label>
                   <textarea
                     name="description"
-                    defaultValue={editingTeam?.description}
+                    defaultValue={editingTeam?.description || ""}
                     rows={3}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   />

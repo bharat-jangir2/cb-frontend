@@ -108,6 +108,90 @@ export interface User {
   updatedAt: string;
 }
 
+// Enhanced Squad and Playing XI interfaces
+export interface EnhancedPlayer {
+  _id: string;
+  fullName: string;
+  shortName: string;
+  role: "batsman" | "bowler" | "all_rounder" | "wicket_keeper";
+  nationality: string;
+  battingStyle?: string;
+  bowlingStyle?: string;
+  photoUrl?: string;
+}
+
+export interface EnhancedSquadData {
+  teamA: EnhancedPlayer[];
+  teamB: EnhancedPlayer[];
+}
+
+export interface SquadUpdateData {
+  teamA: string[];
+  teamB: string[];
+}
+
+export interface PlayingXIPlayer {
+  _id: string;
+  fullName: string;
+  shortName: string;
+  role: "batsman" | "bowler" | "all_rounder" | "wicket_keeper";
+  nationality: string;
+}
+
+export interface EnhancedPlayingXIData {
+  teamA: {
+    players: PlayingXIPlayer[];
+    captain: PlayingXIPlayer | null;
+    viceCaptain: PlayingXIPlayer | null;
+    battingOrder: PlayingXIPlayer[];
+    wicketKeeper: PlayingXIPlayer | null;
+  };
+  teamB: {
+    players: PlayingXIPlayer[];
+    captain: PlayingXIPlayer | null;
+    viceCaptain: PlayingXIPlayer | null;
+    battingOrder: PlayingXIPlayer[];
+    wicketKeeper: PlayingXIPlayer | null;
+  };
+}
+
+export interface PlayingXIUpdateData {
+  teamA?: {
+    players: string[];
+    captain: string;
+    viceCaptain: string;
+    battingOrder: string[];
+    wicketKeeper: string;
+  };
+  teamB?: {
+    players: string[];
+    captain: string;
+    viceCaptain: string;
+    battingOrder: string[];
+    wicketKeeper: string;
+  };
+}
+
+export interface CaptainUpdateData {
+  team: "A" | "B";
+  captainId: string;
+}
+
+export interface ViceCaptainUpdateData {
+  team: "A" | "B";
+  viceCaptainId: string;
+}
+
+export interface BattingOrderUpdateData {
+  team: "A" | "B";
+  battingOrder: string[];
+}
+
+export interface WicketKeeperUpdateData {
+  team: "A" | "B";
+  wicketKeeperId: string;
+}
+
 // Admin API class
 class AdminApi {
   // Teams
@@ -115,9 +199,7 @@ class AdminApi {
     params: { page?: number; limit?: number; search?: string } = {}
   ) {
     console.log("AdminApi.getTeams called with params:", params);
-    const response = await apiClient.get<
-      AdminApiResponse<PaginatedResponse<Team>>
-    >("/teams", { params });
+    const response = await apiClient.get<any>("/teams", { params });
     console.log("AdminApi.getTeams response:", response.data);
     return response.data;
   }
@@ -516,79 +598,164 @@ class AdminApi {
   }
 
   // Squad Management
-  async getMatchSquad(matchId: string, teamId: string) {
-    console.log(
-      "AdminApi.getMatchSquad called with matchId:",
-      matchId,
-      "teamId:",
-      teamId
-    );
-    const response = await apiClient.get<AdminApiResponse<any>>(
-      `/matches/${matchId}/squad/${teamId}`
+  async getMatchSquad(matchId: string) {
+    console.log("AdminApi.getMatchSquad called with matchId:", matchId);
+    const response = await apiClient.get<AdminApiResponse<EnhancedSquadData>>(
+      `/matches/${matchId}/squad`
     );
     console.log("AdminApi.getMatchSquad response:", response.data);
     return response.data;
   }
 
-  async updateMatchSquad(
-    matchId: string,
-    teamId: string,
-    data: { players: string[] }
-  ) {
+  async updateMatchSquad(matchId: string, data: SquadUpdateData) {
     console.log(
       "AdminApi.updateMatchSquad called with matchId:",
       matchId,
-      "teamId:",
-      teamId,
       "data:",
       data
     );
-    const response = await apiClient.patch<AdminApiResponse<any>>(
-      `/matches/${matchId}/squad/${teamId}`,
+    const response = await apiClient.patch<AdminApiResponse<EnhancedSquadData>>(
+      `/matches/${matchId}/squad`,
       data
     );
     console.log("AdminApi.updateMatchSquad response:", response.data);
     return response.data;
   }
 
-  async getPlayingXI(matchId: string, teamId: string) {
-    console.log(
-      "AdminApi.getPlayingXI called with matchId:",
-      matchId,
-      "teamId:",
-      teamId
-    );
-    const response = await apiClient.get<AdminApiResponse<any>>(
-      `/matches/${matchId}/playing-xi/${teamId}`
-    );
+  async getPlayingXI(matchId: string) {
+    console.log("AdminApi.getPlayingXI called with matchId:", matchId);
+    const response = await apiClient.get<
+      AdminApiResponse<EnhancedPlayingXIData>
+    >(`/matches/${matchId}/playing-xi`);
     console.log("AdminApi.getPlayingXI response:", response.data);
     return response.data;
   }
 
-  async updatePlayingXI(matchId: string, teamId: string, data: any) {
+  async updatePlayingXI(matchId: string, data: PlayingXIUpdateData) {
     console.log(
       "AdminApi.updatePlayingXI called with matchId:",
       matchId,
-      "teamId:",
-      teamId,
       "data:",
       data
     );
-    const response = await apiClient.patch<AdminApiResponse<any>>(
-      `/matches/${matchId}/playing-xi/${teamId}`,
-      data
-    );
+    const response = await apiClient.patch<
+      AdminApiResponse<EnhancedPlayingXIData>
+    >(`/matches/${matchId}/playing-xi`, data);
     console.log("AdminApi.updatePlayingXI response:", response.data);
     return response.data;
   }
 
-  // Team Players
-  async getTeamPlayers(teamId: string) {
-    console.log("AdminApi.getTeamPlayers called with teamId:", teamId);
-    const response = await apiClient.get<AdminApiResponse<Player[]>>(
-      `/teams/${teamId}/players`
+  // Enhanced Playing XI Management - Individual Component Updates
+  async updateCaptain(matchId: string, data: CaptainUpdateData) {
+    console.log(
+      "AdminApi.updateCaptain called with matchId:",
+      matchId,
+      "data:",
+      data
     );
-    console.log("AdminApi.getTeamPlayers response:", response.data);
+    const response = await apiClient.patch<
+      AdminApiResponse<EnhancedPlayingXIData>
+    >(`/matches/${matchId}/captain`, data);
+    console.log("AdminApi.updateCaptain response:", response.data);
+    return response.data;
+  }
+
+  async updateViceCaptain(matchId: string, data: ViceCaptainUpdateData) {
+    console.log(
+      "AdminApi.updateViceCaptain called with matchId:",
+      matchId,
+      "data:",
+      data
+    );
+    const response = await apiClient.patch<
+      AdminApiResponse<EnhancedPlayingXIData>
+    >(`/matches/${matchId}/vice-captain`, data);
+    console.log("AdminApi.updateViceCaptain response:", response.data);
+    return response.data;
+  }
+
+  async updateBattingOrder(matchId: string, data: BattingOrderUpdateData) {
+    console.log(
+      "AdminApi.updateBattingOrder called with matchId:",
+      matchId,
+      "data:",
+      data
+    );
+    const response = await apiClient.patch<
+      AdminApiResponse<EnhancedPlayingXIData>
+    >(`/matches/${matchId}/batting-order`, data);
+    console.log("AdminApi.updateBattingOrder response:", response.data);
+    return response.data;
+  }
+
+  async updateWicketKeeper(matchId: string, data: WicketKeeperUpdateData) {
+    console.log(
+      "AdminApi.updateWicketKeeper called with matchId:",
+      matchId,
+      "data:",
+      data
+    );
+    const response = await apiClient.patch<
+      AdminApiResponse<EnhancedPlayingXIData>
+    >(`/matches/${matchId}/wicket-keeper`, data);
+    console.log("AdminApi.updateWicketKeeper response:", response.data);
+    return response.data;
+  }
+
+  // Enhanced Squad Management - Team-specific endpoints
+  async getSquadForTeam(matchId: string, team: "A" | "B") {
+    console.log(
+      "AdminApi.getSquadForTeam called with matchId:",
+      matchId,
+      "team:",
+      team
+    );
+    const response = await apiClient.get<AdminApiResponse<EnhancedPlayer[]>>(
+      `/matches/${matchId}/squad/team/${team}`
+    );
+    console.log("AdminApi.getSquadForTeam response:", response.data);
+    return response.data;
+  }
+
+  async getAvailablePlayers(matchId: string, team: "A" | "B") {
+    console.log(
+      "AdminApi.getAvailablePlayers called with matchId:",
+      matchId,
+      "team:",
+      team
+    );
+    const response = await apiClient.get<AdminApiResponse<EnhancedPlayer[]>>(
+      `/matches/${matchId}/available-players/${team}`
+    );
+    console.log("AdminApi.getAvailablePlayers response:", response.data);
+    return response.data;
+  }
+
+  // Players Management
+  async getAllPlayers(limit: number = 1000) {
+    console.log("AdminApi.getAllPlayers called with limit:", limit);
+    const response = await apiClient.get<AdminApiResponse<Player[]>>(
+      `/players?limit=${limit}`
+    );
+    console.log("AdminApi.getAllPlayers response:", response.data);
+    return response.data;
+  }
+
+  async getPlayersByTeam(teamId: string) {
+    console.log("AdminApi.getPlayersByTeam called with teamId:", teamId);
+    const response = await apiClient.get<AdminApiResponse<Player[]>>(
+      `/players/team/${teamId}`
+    );
+    console.log("AdminApi.getPlayersByTeam response:", response.data);
+    return response.data;
+  }
+
+  async getPlayersByRole(role: string) {
+    console.log("AdminApi.getPlayersByRole called with role:", role);
+    const response = await apiClient.get<AdminApiResponse<Player[]>>(
+      `/players/role/${role}`
+    );
+    console.log("AdminApi.getPlayersByRole response:", response.data);
     return response.data;
   }
 
