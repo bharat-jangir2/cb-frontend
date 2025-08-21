@@ -1,4 +1,5 @@
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
 import {
   FaRocket,
   FaNewspaper,
@@ -6,14 +7,65 @@ import {
   FaGamepad,
   FaChartBar,
   FaUsers,
+  FaPlay,
 } from "react-icons/fa";
+import { matchesApi } from "../services/matches";
+import type { Match } from "../types/matches";
 
 const Home = () => {
-  // Static data for testing
-  const liveMatches: any[] = [];
-  const upcomingMatches: any[] = [];
-  const matchesLoading = false;
-  const upcomingLoading = false;
+  const navigate = useNavigate();
+
+  // Fetch live matches from API
+  const {
+    data: liveMatches = [],
+    isLoading: matchesLoading,
+    error: liveMatchesError,
+  } = useQuery({
+    queryKey: ["live-matches"],
+    queryFn: () => matchesApi.getLiveMatches(),
+    refetchInterval: 30000, // Refetch every 30 seconds
+  });
+
+  // Temporary fallback data for testing navigation
+  const fallbackLiveMatches = [
+    {
+      _id: "68a418b9e9f3a0b5f9a2cebc",
+      teamAId: { name: "India", shortName: "in" },
+      teamBId: { name: "Pakistan", shortName: "pk" },
+      venue: "bangladesh",
+      score: { teamA: { runs: 0, wickets: 0, overs: 0 } },
+      matchType: "T20",
+      currentBall: 0,
+    },
+  ];
+
+  // Use fallback data if API fails or returns empty
+  const displayLiveMatches =
+    liveMatches.length > 0 ? liveMatches : fallbackLiveMatches;
+
+  console.log("🏠 Home - Display live matches:", displayLiveMatches);
+  // Fetch upcoming matches from API
+  const {
+    data: upcomingMatches = [],
+    isLoading: upcomingLoading,
+    error: upcomingMatchesError,
+  } = useQuery({
+    queryKey: ["upcoming-matches"],
+    queryFn: () => matchesApi.getMatches({ status: "scheduled" }),
+    refetchInterval: 60000, // Refetch every minute
+  });
+
+  // Debug logging
+  console.log("🏠 Home - Live matches:", liveMatches);
+  console.log("🏠 Home - Upcoming matches:", upcomingMatches);
+  console.log("🏠 Home - Live matches length:", liveMatches?.length);
+  console.log("🏠 Home - First live match:", liveMatches?.[0]);
+  console.log("🏠 Home - First live match teamAId:", liveMatches?.[0]?.teamAId);
+  console.log("🏠 Home - First live match teamBId:", liveMatches?.[0]?.teamBId);
+  console.log("🏠 Home - Live matches error:", liveMatchesError);
+  console.log("🏠 Home - Upcoming matches error:", upcomingMatchesError);
+  console.log("🏠 Home - Live matches loading:", matchesLoading);
+  console.log("🏠 Home - Upcoming matches loading:", upcomingLoading);
 
   const stats = [
     {
@@ -230,14 +282,60 @@ const Home = () => {
                   </div>
                 ))}
               </div>
-            ) : liveMatches && liveMatches.length > 0 ? (
+            ) : liveMatchesError ? (
+              <div className="text-center py-8">
+                <FaRocket className="mx-auto h-12 w-12 text-red-400" />
+                <h3 className="mt-2 text-sm font-medium text-gray-900">
+                  Error loading live matches
+                </h3>
+                <p className="mt-1 text-sm text-red-500">
+                  {liveMatchesError.message || "Failed to load live matches"}
+                </p>
+                <button
+                  onClick={() => window.location.reload()}
+                  className="mt-2 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+                >
+                  Retry
+                </button>
+              </div>
+            ) : displayLiveMatches && displayLiveMatches.length > 0 ? (
               <div className="space-y-4">
-                {liveMatches.slice(0, 3).map((match) => (
+                {displayLiveMatches.slice(0, 3).map((match) => (
                   <div
-                    key={match.id}
-                    className="p-4 border border-gray-200 rounded-lg"
+                    key={match._id}
+                    onClick={() => {
+                      console.log("🎯 Clicking on live match:", match);
+                      console.log("🎯 Live Match ID:", match._id);
+                      navigate(`/match/${match._id}`);
+                    }}
+                    className="p-4 border border-gray-200 rounded-lg hover:border-blue-300 hover:bg-blue-50 cursor-pointer transition-colors"
                   >
-                    <h3 className="font-medium">{match.title}</h3>
+                    <div className="flex items-center justify-between">
+                      <div className="flex-1">
+                        <h3 className="font-medium text-gray-900">
+                          {match.teamAId?.name || "Team A"} vs{" "}
+                          {match.teamBId?.name || "Team B"}
+                        </h3>
+                        <p className="text-sm text-gray-600 mt-1">
+                          {match.venue || "Venue TBD"}
+                        </p>
+                        <div className="flex items-center space-x-4 mt-2">
+                          <span className="text-sm font-medium text-green-600">
+                            {match.score?.teamA?.runs || 0}/
+                            {match.score?.teamA?.wickets || 0} -{" "}
+                            {match.score?.teamA?.overs || 0}.
+                            {match.currentBall || 0}
+                          </span>
+                          <span className="text-sm text-gray-500">
+                            {match.matchType || "T20"}
+                          </span>
+                          <span className="px-2 py-1 bg-red-100 text-red-800 text-xs rounded-full">
+                            LIVE
+                          </span>
+                        </div>
+                      </div>
+                      <FaPlay className="h-5 w-5 text-blue-600" />
+                    </div>
                   </div>
                 ))}
               </div>
@@ -280,10 +378,33 @@ const Home = () => {
               <div className="space-y-4">
                 {upcomingMatches.slice(0, 3).map((match) => (
                   <div
-                    key={match.id}
-                    className="p-4 border border-gray-200 rounded-lg"
+                    key={match._id}
+                    onClick={() => {
+                      console.log("🎯 Clicking on upcoming match:", match);
+                      console.log("🎯 Upcoming Match ID:", match._id);
+                      navigate(`/match/${match._id}`);
+                    }}
+                    className="p-4 border border-gray-200 rounded-lg hover:border-blue-300 hover:bg-blue-50 cursor-pointer transition-colors"
                   >
-                    <h3 className="font-medium">{match.title}</h3>
+                    <div className="flex items-center justify-between">
+                      <div className="flex-1">
+                        <h3 className="font-medium text-gray-900">
+                          {match.teamAId?.name} vs {match.teamBId?.name}
+                        </h3>
+                        <p className="text-sm text-gray-600 mt-1">
+                          {match.venue}
+                        </p>
+                        <div className="flex items-center space-x-4 mt-2">
+                          <span className="text-sm text-gray-500">
+                            {new Date(match.startTime).toLocaleDateString()}
+                          </span>
+                          <span className="px-2 py-1 bg-yellow-100 text-yellow-800 text-xs rounded-full">
+                            UPCOMING
+                          </span>
+                        </div>
+                      </div>
+                      <FaPlay className="h-5 w-5 text-blue-600" />
+                    </div>
                   </div>
                 ))}
               </div>

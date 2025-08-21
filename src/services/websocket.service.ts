@@ -1,18 +1,14 @@
 import { io, Socket } from "socket.io-client";
-import { matchesAPI } from "./api/matches.service";
 
 class WebSocketService {
   private socket: Socket | null = null;
-  private matchId: string | null = null;
+  private listeners = new Map<string, Function[]>();
 
-  connect(token: string) {
-    this.socket = io(
-      import.meta.env.VITE_SOCKET_URL || "http://localhost:5000",
-      {
-        auth: { token },
-        transports: ["websocket", "polling"],
-      }
-    );
+  connect(matchId: string, token: string) {
+    this.socket = io("http://localhost:5000", {
+      auth: { token },
+      query: { matchId },
+    });
 
     this.setupEventListeners();
   }
@@ -20,89 +16,77 @@ class WebSocketService {
   private setupEventListeners() {
     if (!this.socket) return;
 
+    // Score updates
+    this.socket.on("score.state", (data) => {
+      this.emit("score.state", data);
+    });
+
+    // Ball updates
+    this.socket.on("ball.applied", (data) => {
+      this.emit("ball.applied", data);
+    });
+
+    this.socket.on("ball.undone", (data) => {
+      this.emit("ball.undone", data);
+    });
+
+    // Player updates
+    this.socket.on("player.update", (data) => {
+      this.emit("player.update", data);
+    });
+
+    // Commentary updates
+    this.socket.on("commentary.update", (data) => {
+      this.emit("commentary.update", data);
+    });
+
+    // Match status updates
+    this.socket.on("match.status", (data) => {
+      this.emit("match.status", data);
+    });
+
+    // Innings updates
+    this.socket.on("innings.update", (data) => {
+      this.emit("innings.update", data);
+    });
+
+    // Partnership updates
+    this.socket.on("partnership.update", (data) => {
+      this.emit("partnership.update", data);
+    });
+
     // Connection events
     this.socket.on("connect", () => {
-      console.log("Connected to WebSocket");
+      console.log("WebSocket connected");
+      this.emit("connected", {});
     });
 
     this.socket.on("disconnect", () => {
-      console.log("Disconnected from WebSocket");
+      console.log("WebSocket disconnected");
+      this.emit("disconnected", {});
     });
 
-    // Match events
-    this.socket.on("ball.added", (data) => {
-      this.handleBallUpdate(data);
-    });
-
-    this.socket.on("innings.updated", (data) => {
-      this.handleInningsUpdate(data);
-    });
-
-    this.socket.on("match.updated", (data) => {
-      this.handleMatchUpdate(data);
-    });
-
-    this.socket.on("event.added", (data) => {
-      this.handleEventUpdate(data);
-    });
-
-    this.socket.on("highlight.added", (data) => {
-      this.handleHighlightUpdate(data);
+    this.socket.on("connect_error", (error) => {
+      console.error("WebSocket connection error:", error);
+      this.emit("error", error);
     });
   }
 
-  joinMatch(matchId: string) {
-    if (this.socket && matchId) {
-      this.matchId = matchId;
-      this.socket.emit("join_match", { matchId });
+  on(event: string, callback: Function) {
+    if (!this.listeners.has(event)) {
+      this.listeners.set(event, []);
     }
+    this.listeners.get(event)!.push(callback);
   }
 
-  leaveMatch() {
-    if (this.socket && this.matchId) {
-      this.socket.emit("leave_match", { matchId: this.matchId });
-      this.matchId = null;
-    }
+  off(event: string) {
+    this.listeners.delete(event);
   }
 
-  // Real-time update handlers
-  private handleBallUpdate(data: any) {
-    // Trigger React Query cache updates
-    window.dispatchEvent(new CustomEvent("ball-update", { detail: data }));
-  }
-
-  private handleInningsUpdate(data: any) {
-    window.dispatchEvent(new CustomEvent("innings-update", { detail: data }));
-  }
-
-  private handleMatchUpdate(data: any) {
-    window.dispatchEvent(new CustomEvent("match-update", { detail: data }));
-  }
-
-  private handleEventUpdate(data: any) {
-    window.dispatchEvent(new CustomEvent("event-update", { detail: data }));
-  }
-
-  private handleHighlightUpdate(data: any) {
-    window.dispatchEvent(new CustomEvent("highlight-update", { detail: data }));
-  }
-
-  // Admin/Scorer actions
-  addBall(matchId: string, ballData: any) {
-    if (this.socket) {
-      this.socket.emit("ball.add", { matchId, ballData });
-    }
-  }
-
-  updateMatch(matchId: string, updateData: any) {
-    if (this.socket) {
-      this.socket.emit("match.update", { matchId, updateData });
-    }
-  }
-
-  addEvent(matchId: string, eventData: any) {
-    if (this.socket) {
-      this.socket.emit("event.add", { matchId, eventData });
+  private emit(event: string, data: any) {
+    const callbacks = this.listeners.get(event);
+    if (callbacks) {
+      callbacks.forEach((callback) => callback(data));
     }
   }
 
@@ -111,54 +95,15 @@ class WebSocketService {
       this.socket.disconnect();
       this.socket = null;
     }
+    this.listeners.clear();
+  }
+
+  // Send events to server
+  emitToServer(event: string, data: any) {
+    if (this.socket) {
+      this.socket.emit(event, data);
+    }
   }
 }
 
 export const websocketService = new WebSocketService();
-
-// React hook for WebSocket - commented out for now to fix build issues
-/*
-export const useWebSocket = (matchId?: string) => {
-  // Import React hooks properly
-  const { useQueryClient } = require("@tanstack/react-query");
-  const queryClient = useQueryClient();
-  const { useEffect } = require("react");
-
-  useEffect(() => {
-    if (matchId) {
-      websocketService.joinMatch(matchId);
-
-      const handleBallUpdate = (event: any) => {
-        queryClient.invalidateQueries({ queryKey: ["balls", matchId] });
-        queryClient.invalidateQueries({ queryKey: ["innings", matchId] });
-      };
-
-      const handleInningsUpdate = (event: any) => {
-        queryClient.invalidateQueries({ queryKey: ["innings", matchId] });
-        queryClient.invalidateQueries({ queryKey: ["match", matchId] });
-      };
-
-      const handleMatchUpdate = (event: any) => {
-        queryClient.invalidateQueries({ queryKey: ["match", matchId] });
-      };
-
-      const handleEventUpdate = (event: any) => {
-        queryClient.invalidateQueries({ queryKey: ["events", matchId] });
-      };
-
-      window.addEventListener("ball-update", handleBallUpdate);
-      window.addEventListener("innings-update", handleInningsUpdate);
-      window.addEventListener("match-update", handleMatchUpdate);
-      window.addEventListener("event-update", handleEventUpdate);
-
-      return () => {
-        websocketService.leaveMatch();
-        window.removeEventListener("ball-update", handleBallUpdate);
-        window.removeEventListener("innings-update", handleInningsUpdate);
-        window.removeEventListener("match-update", handleMatchUpdate);
-        window.removeEventListener("event-update", handleEventUpdate);
-      };
-    }
-  }, [matchId, queryClient]);
-};
-*/

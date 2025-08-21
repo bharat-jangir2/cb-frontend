@@ -17,6 +17,11 @@ import UserDashboard from "./pages/UserDashboard";
 import Matches from "./pages/Matches";
 import Teams from "./pages/Teams";
 import MatchDetail from "./pages/MatchDetail";
+import AdminMatchDetail from "./pages/Admin/AdminMatchDetail";
+import Series from "./pages/Series";
+import Fixtures from "./pages/Fixtures";
+import Stats from "./pages/Stats";
+import Rankings from "./pages/Rankings";
 import News from "./pages/News";
 import Tournaments from "./pages/Tournaments";
 import Fantasy from "./pages/Fantasy";
@@ -33,6 +38,7 @@ import MatchStats from "./pages/Admin/MatchStats";
 import MatchSquad from "./pages/Admin/MatchSquad";
 import MatchVenue from "./pages/Admin/MatchVenue";
 import MatchScorecard from "./pages/Admin/MatchScorecard";
+import Scoring from "./pages/Admin/Scoring";
 import AdminTeams from "./pages/Admin/Teams";
 import TeamDetail from "./pages/Admin/TeamDetail";
 import TeamPlayers from "./pages/Admin/TeamPlayers";
@@ -43,7 +49,7 @@ import PlayerEdit from "./pages/Admin/PlayerEdit";
 import PlayerStats from "./pages/Admin/PlayerStats";
 import AdminUsers from "./pages/Admin/Users";
 import AdminTournaments from "./pages/Admin/Tournaments";
-import AdminSeries from "./pages/Admin/Series";
+import AdminSeries from "./pages/Admin/AdminSeries";
 import CreateMatch from "./pages/Admin/CreateMatch";
 import CreateTournament from "./pages/Admin/CreateTournament";
 import CreateSeries from "./pages/Admin/CreateSeries";
@@ -139,6 +145,11 @@ function App() {
           {/* Public Routes */}
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
+          <Route path="/match/:id" element={<MatchDetail />} />
+          <Route path="/series" element={<Series />} />
+          <Route path="/fixtures" element={<Fixtures />} />
+          <Route path="/stats" element={<Stats />} />
+          <Route path="/rankings" element={<Rankings />} />
 
           {/* Root redirect based on role */}
           <Route
@@ -159,13 +170,14 @@ function App() {
             <Route path="matches" element={<AdminMatches />} />
             <Route path="matches/live" element={<LiveMatches />} />
             <Route path="matches/create" element={<CreateMatch />} />
-            <Route path="matches/:id" element={<MatchDetail />} />
+            <Route path="matches/:id" element={<AdminMatchDetail />} />
             <Route path="matches/:id/scoring" element={<MatchScoring />} />
             <Route path="matches/:id/stats" element={<MatchStats />} />
             <Route path="matches/:id/squad" element={<MatchSquad />} />
             <Route path="matches/:id/commentary" element={<MatchScoring />} />
             <Route path="matches/:id/venue" element={<MatchVenue />} />
             <Route path="matches/:id/scorecard" element={<MatchScorecard />} />
+            <Route path="matches/:id/scoring" element={<Scoring />} />
             <Route path="teams" element={<AdminTeams />} />
             <Route path="teams/create" element={<AdminTeams />} />
             <Route path="teams/:id" element={<TeamDetail />} />
@@ -223,7 +235,7 @@ function App() {
 
           {/* User Routes - Crex.live style interface */}
           <Route
-            path="/user"
+            path="/user/*"
             element={
               <ProtectedRoute>
                 <UserLayout>

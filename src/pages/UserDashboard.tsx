@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import { useNavigate } from "react-router-dom";
 import { matchesApi } from "../services/matches";
 import { teamsApi } from "../services/teams";
 import {
@@ -20,6 +21,8 @@ import {
 } from "react-icons/fa";
 
 const UserDashboard = () => {
+  const navigate = useNavigate();
+
   const { data: liveMatches } = useQuery({
     queryKey: ["matches", "live"],
     queryFn: () => matchesApi.getLiveMatches(),
@@ -29,6 +32,10 @@ const UserDashboard = () => {
     queryKey: ["matches", "upcoming"],
     queryFn: () => matchesApi.getMatches({ status: "scheduled" }),
   });
+
+  // Debug logging
+  console.log("🏠 UserDashboard - Live matches:", liveMatches);
+  console.log("🏠 UserDashboard - Upcoming matches:", upcomingMatches);
 
   const { data: teams } = useQuery({
     queryKey: ["teams"],
@@ -82,46 +89,73 @@ const UserDashboard = () => {
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
               {liveMatches.map((match) => (
                 <div
-                  key={match.id}
-                  className="bg-white rounded-xl shadow-lg overflow-hidden hover:shadow-xl transition-shadow"
+                  key={match._id}
+                  onClick={() => {
+                    console.log(
+                      "🎯 UserDashboard - Clicking on live match:",
+                      match
+                    );
+                    console.log("🎯 UserDashboard - Live Match ID:", match._id);
+                    navigate(`/match/${match._id}`);
+                  }}
+                  className="bg-white rounded-xl shadow-lg overflow-hidden hover:shadow-xl transition-shadow cursor-pointer"
                 >
                   <div className="bg-gradient-to-r from-red-500 to-red-600 p-3 sm:p-4 text-white">
                     <div className="flex items-center justify-between">
-                      <span className="text-xs sm:text-sm font-semibold">LIVE</span>
+                      <span className="text-xs sm:text-sm font-semibold">
+                        LIVE
+                      </span>
                       <span className="text-xs bg-red-700 px-2 py-1 rounded-full">
-                        {match.format.toUpperCase()}
+                        {match?.matchType?.toUpperCase()}
                       </span>
                     </div>
                   </div>
                   <div className="p-4 sm:p-6">
                     <h3 className="text-base sm:text-lg font-bold text-gray-900 mb-3 sm:mb-4 line-clamp-2">
-                      {match.title}
+                      {match?.teamAId?.name} vs {match?.teamBId?.name}
                     </h3>
                     <div className="space-y-2 sm:space-y-3">
                       <div className="flex items-center justify-between">
-                        <span className="text-xs sm:text-sm text-gray-600">Team 1</span>
+                        <span className="text-xs sm:text-sm text-gray-600">
+                          {match?.teamAId?.name}
+                        </span>
                         <span className="font-semibold text-sm sm:text-base truncate ml-2">
-                          {match.team1.name}
+                          {match?.score?.teamA?.runs || 0}/
+                          {match?.score?.teamA?.wickets || 0}
                         </span>
                       </div>
                       <div className="flex items-center justify-between">
-                        <span className="text-xs sm:text-sm text-gray-600">Team 2</span>
+                        <span className="text-xs sm:text-sm text-gray-600">
+                          {match?.teamBId?.name}
+                        </span>
                         <span className="font-semibold text-sm sm:text-base truncate ml-2">
-                          {match.team2.name}
+                          {match?.score?.teamB?.runs || 0}/
+                          {match?.score?.teamB?.wickets || 0}
                         </span>
                       </div>
                       <div className="flex items-center justify-between">
-                        <span className="text-xs sm:text-sm text-gray-600">Venue</span>
-                        <span className="text-xs sm:text-sm truncate ml-2">{match.venue}</span>
+                        <span className="text-xs sm:text-sm text-gray-600">
+                          Venue
+                        </span>
+                        <span className="text-xs sm:text-sm truncate ml-2">
+                          {match?.venue}
+                        </span>
                       </div>
                     </div>
                     <div className="mt-3 sm:mt-4 pt-3 sm:pt-4 border-t border-gray-200">
-                      <a
-                        href={`/user/matches/${match.id}`}
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          console.log(
+                            "🎯 UserDashboard - Watch Live clicked for match:",
+                            match._id
+                          );
+                          navigate(`/match/${match._id}`);
+                        }}
                         className="block w-full bg-cricket-green text-white text-center py-2 rounded-lg hover:bg-green-600 transition-colors text-sm sm:text-base"
                       >
                         Watch Live
-                      </a>
+                      </button>
                     </div>
                   </div>
                 </div>
@@ -160,48 +194,74 @@ const UserDashboard = () => {
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
               {upcomingMatches.slice(0, 6).map((match) => (
                 <div
-                  key={match.id}
-                  className="bg-white rounded-xl shadow-lg overflow-hidden hover:shadow-xl transition-shadow"
+                  key={match._id}
+                  onClick={() => {
+                    console.log(
+                      "🎯 UserDashboard - Clicking on upcoming match:",
+                      match
+                    );
+                    console.log(
+                      "🎯 UserDashboard - Upcoming Match ID:",
+                      match._id
+                    );
+                    navigate(`/match/${match._id}`);
+                  }}
+                  className="bg-white rounded-xl shadow-lg overflow-hidden hover:shadow-xl transition-shadow cursor-pointer"
                 >
                   <div className="bg-gradient-to-r from-blue-500 to-blue-600 p-3 sm:p-4 text-white">
                     <div className="flex items-center justify-between">
-                      <span className="text-xs sm:text-sm font-semibold">UPCOMING</span>
+                      <span className="text-xs sm:text-sm font-semibold">
+                        UPCOMING
+                      </span>
                       <span className="text-xs bg-blue-700 px-2 py-1 rounded-full">
-                        {match.format.toUpperCase()}
+                        {match?.matchType?.toUpperCase()}
                       </span>
                     </div>
                   </div>
                   <div className="p-4 sm:p-6">
                     <h3 className="text-base sm:text-lg font-bold text-gray-900 mb-3 sm:mb-4 line-clamp-2">
-                      {match.title}
+                      {match?.teamAId?.name} vs {match?.teamBId?.name}
                     </h3>
                     <div className="space-y-2 sm:space-y-3">
                       <div className="flex items-center justify-between">
-                        <span className="text-xs sm:text-sm text-gray-600">Team 1</span>
+                        <span className="text-xs sm:text-sm text-gray-600">
+                          {match?.teamAId?.name}
+                        </span>
                         <span className="font-semibold text-sm sm:text-base truncate ml-2">
-                          {match.team1.name}
+                          vs
                         </span>
                       </div>
                       <div className="flex items-center justify-between">
-                        <span className="text-xs sm:text-sm text-gray-600">Team 2</span>
+                        <span className="text-xs sm:text-sm text-gray-600">
+                          {match?.teamBId?.name}
+                        </span>
                         <span className="font-semibold text-sm sm:text-base truncate ml-2">
-                          {match.team2.name}
+                          {match?.venue}
                         </span>
                       </div>
                       <div className="flex items-center justify-between">
-                        <span className="text-xs sm:text-sm text-gray-600">Date</span>
+                        <span className="text-xs sm:text-sm text-gray-600">
+                          Date
+                        </span>
                         <span className="text-xs sm:text-sm">
-                          {new Date(match.date).toLocaleDateString()}
+                          {new Date(match?.startTime).toLocaleDateString()}
                         </span>
                       </div>
                     </div>
                     <div className="mt-3 sm:mt-4 pt-3 sm:pt-4 border-t border-gray-200">
-                      <a
-                        href={`/user/matches/${match.id}`}
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          console.log(
+                            "🎯 UserDashboard - View Details clicked for match:",
+                            match._id
+                          );
+                          navigate(`/match/${match._id}`);
+                        }}
                         className="block w-full bg-blue-500 text-white text-center py-2 rounded-lg hover:bg-blue-600 transition-colors text-sm sm:text-base"
                       >
                         View Details
-                      </a>
+                      </button>
                     </div>
                   </div>
                 </div>
@@ -238,12 +298,16 @@ const UserDashboard = () => {
           </div>
           <div className="bg-white rounded-xl shadow-lg p-4 sm:p-6 text-center">
             <FaUsers className="mx-auto h-6 w-6 sm:h-8 sm:w-8 text-blue-500 mb-2 sm:mb-3" />
-            <h3 className="text-lg sm:text-2xl font-bold text-gray-900">1.2K</h3>
+            <h3 className="text-lg sm:text-2xl font-bold text-gray-900">
+              1.2K
+            </h3>
             <p className="text-gray-600 text-xs sm:text-sm">Active Users</p>
           </div>
           <div className="bg-white rounded-xl shadow-lg p-4 sm:p-6 text-center">
             <FaGamepad className="mx-auto h-6 w-6 sm:h-8 sm:w-8 text-green-500 mb-2 sm:mb-3" />
-            <h3 className="text-lg sm:text-2xl font-bold text-gray-900">500+</h3>
+            <h3 className="text-lg sm:text-2xl font-bold text-gray-900">
+              500+
+            </h3>
             <p className="text-gray-600 text-xs sm:text-sm">Fantasy Leagues</p>
           </div>
         </div>
@@ -286,7 +350,9 @@ const UserDashboard = () => {
 
           <div className="bg-white rounded-xl shadow-lg p-4 sm:p-6 hover:shadow-xl transition-shadow">
             <FaChartBar className="h-8 w-8 sm:h-12 sm:w-12 text-purple-500 mb-3 sm:mb-4" />
-            <h3 className="text-lg sm:text-xl font-bold text-gray-900 mb-2">Analytics</h3>
+            <h3 className="text-lg sm:text-xl font-bold text-gray-900 mb-2">
+              Analytics
+            </h3>
             <p className="text-gray-600 mb-3 sm:mb-4 text-sm sm:text-base">
               Deep dive into player statistics, team performance, and match
               predictions.
@@ -318,7 +384,9 @@ const UserDashboard = () => {
 
           <div className="bg-white rounded-xl shadow-lg p-4 sm:p-6 hover:shadow-xl transition-shadow">
             <FaUsers className="h-8 w-8 sm:h-12 sm:w-12 text-indigo-500 mb-3 sm:mb-4" />
-            <h3 className="text-lg sm:text-xl font-bold text-gray-900 mb-2">Community</h3>
+            <h3 className="text-lg sm:text-xl font-bold text-gray-900 mb-2">
+              Community
+            </h3>
             <p className="text-gray-600 mb-3 sm:mb-4 text-sm sm:text-base">
               Join discussions, participate in polls, and connect with cricket
               fans.
@@ -333,7 +401,9 @@ const UserDashboard = () => {
 
           <div className="bg-white rounded-xl shadow-lg p-4 sm:p-6 hover:shadow-xl transition-shadow">
             <FaCrown className="h-8 w-8 sm:h-12 sm:w-12 text-orange-500 mb-3 sm:mb-4" />
-            <h3 className="text-lg sm:text-xl font-bold text-gray-900 mb-2">Premium</h3>
+            <h3 className="text-lg sm:text-xl font-bold text-gray-900 mb-2">
+              Premium
+            </h3>
             <p className="text-gray-600 mb-3 sm:mb-4 text-sm sm:text-base">
               Get exclusive content, advanced analytics, and premium features.
             </p>

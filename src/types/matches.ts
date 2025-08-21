@@ -10,26 +10,45 @@ export interface Player {
   id: string;
   name: string;
   teamId: string;
-  role: 'batsman' | 'bowler' | 'all-rounder' | 'wicket-keeper';
+  role: "batsman" | "bowler" | "all-rounder" | "wicket-keeper";
   battingStyle?: string;
   bowlingStyle?: string;
   photo?: string;
 }
 
 export interface Match {
-  id: string;
-  title: string;
-  description?: string;
-  team1: Team;
-  team2: Team;
+  _id: string;
+  name: string;
   venue: string;
-  date: string;
-  status: 'scheduled' | 'live' | 'completed' | 'cancelled';
-  format: 't20' | 'odi' | 'test';
-  tossWinner?: string;
-  tossChoice?: 'bat' | 'bowl';
-  result?: string;
-  currentInnings?: number;
+  startTime: string;
+  status: "scheduled" | "in_progress" | "completed" | "cancelled";
+  teamAId: {
+    _id: string;
+    name: string;
+    shortName: string;
+  };
+  teamBId: {
+    _id: string;
+    name: string;
+    shortName: string;
+  };
+  matchType: "T20" | "ODI" | "Test";
+  overs: number;
+  currentInnings: number;
+  currentOver: number;
+  currentBall: number;
+  score: {
+    teamA: {
+      runs: number;
+      wickets: number;
+      overs: number;
+    };
+    teamB: {
+      runs: number;
+      wickets: number;
+      overs: number;
+    };
+  };
   createdAt: string;
   updatedAt: string;
 }
@@ -41,7 +60,7 @@ export interface Ball {
   ball: number;
   runs: number;
   extras?: number;
-  extraType?: 'wide' | 'no-ball' | 'bye' | 'leg-bye';
+  extraType?: "wide" | "no-ball" | "bye" | "leg-bye";
   wicket?: boolean;
   wicketType?: string;
   batsmanId: string;

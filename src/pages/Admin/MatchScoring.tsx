@@ -692,6 +692,12 @@ const MatchScoring: React.FC = () => {
               <button className="px-3 py-1 text-gray-600 hover:text-gray-900 text-sm">
                 Info
               </button>
+              <button
+                onClick={() => navigate(`/admin/matches/${id}/scoring`)}
+                className="px-3 py-1 bg-green-600 text-white text-sm rounded hover:bg-green-700"
+              >
+                Scorecard
+              </button>
               <button className="px-3 py-1 text-gray-600 hover:text-gray-900 text-sm">
                 Squad
               </button>
