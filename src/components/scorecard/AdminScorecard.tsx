@@ -25,7 +25,7 @@ import {
   FaMapMarkerAlt,
   FaCog,
   FaEdit,
-  FaRefresh,
+  FaRedo,
 } from "react-icons/fa";
 import { toast } from "react-hot-toast";
 
@@ -346,7 +346,7 @@ export const AdminScorecard: React.FC<AdminScorecardProps> = ({
               disabled={refreshMutation.isPending}
               className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-md flex items-center space-x-2 transition-colors"
             >
-              <FaRefresh
+              <FaRedo
                 className={`text-sm ${
                   refreshMutation.isPending ? "animate-spin" : ""
                 }`}
