@@ -5,15 +5,7 @@ import { unifiedScorecardService } from "../../services/unified-scorecard.servic
 import type { UnifiedScorecard } from "../../types/scorecard";
 import { useScorecardWebSocket } from "../../hooks/useScorecardWebSocket";
 import { LiveScore } from "./LiveScore";
-import { BattingScorecard } from "./BattingScorecard";
-import { BowlingScorecard } from "./BowlingScorecard";
-import { BallByBall } from "./BallByBall";
-import { Commentary } from "./Commentary";
-import { Partnerships } from "./Partnerships";
-import { FallOfWickets } from "./FallOfWickets";
-import { PowerPlays } from "./PowerPlays";
-import { MatchHighlights } from "./MatchHighlights";
-import { TeamComparison } from "./TeamComparison";
+import Commentary from "./Commentary";
 import {
   FaRocket,
   FaChartBar,
@@ -32,7 +24,6 @@ export const UserScorecard: React.FC<UserScorecardProps> = ({
 }) => {
   const { id } = useParams<{ id: string }>();
   const [activeTab, setActiveTab] = useState("live");
-  const [selectedInnings, setSelectedInnings] = useState(1);
 
   console.log("🎯 UserScorecard - Rendering with id:", id);
   console.log("🎯 UserScorecard - isAdmin:", isAdmin);
@@ -56,20 +47,6 @@ export const UserScorecard: React.FC<UserScorecardProps> = ({
     queryFn: () => unifiedScorecardService.getLiveScorecard(id!),
     enabled: !!id && scorecard?.matchSummary?.status === "in_progress",
     refetchInterval: 3000, // Refresh every 3 seconds for live matches
-  });
-
-  // Fetch match highlights
-  const { data: highlights } = useQuery({
-    queryKey: ["highlights", id],
-    queryFn: () => unifiedScorecardService.getMatchHighlights(id!),
-    enabled: !!id && scorecard?.matchSummary?.status === "completed",
-  });
-
-  // Fetch team comparison
-  const { data: teamComparison } = useQuery({
-    queryKey: ["teamComparison", id],
-    queryFn: () => unifiedScorecardService.getTeamComparison(id!),
-    enabled: !!id,
   });
 
   // WebSocket integration for real-time updates
@@ -98,128 +75,115 @@ export const UserScorecard: React.FC<UserScorecardProps> = ({
     );
   }
 
-  if (scorecardError || !scorecard) {
-    console.log("❌ UserScorecard - No scorecard data found");
+  if (scorecardError) {
     return (
       <div className="flex items-center justify-center min-h-screen">
-        <div className="text-red-500 text-xl">
-          Match not found or error loading scorecard
+        <div className="text-center">
+          <div className="text-red-600 text-xl font-semibold mb-2">
+            Error loading scorecard
+          </div>
+          <div className="text-gray-600">
+            {scorecardError.message || "Failed to load match data"}
+          </div>
         </div>
       </div>
     );
   }
 
-  console.log("✅ UserScorecard - Scorecard data loaded:", scorecard);
+  if (!scorecard) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <div className="text-gray-600 text-xl font-semibold mb-2">
+            No scorecard data available
+          </div>
+        </div>
+      </div>
+    );
+  }
 
-  const currentInnings = scorecard.innings.find(
-    (inn) => inn.inningNumber === selectedInnings
-  );
-  const isLive = scorecard.matchSummary.status === "in_progress";
+  const isLive = scorecard?.matchSummary?.status === "in_progress";
 
-  // Define tabs based on match status and available data
+  // Mock commentary data - replace with actual API call
+  const mockCommentaryEntries = [
+    {
+      id: "1",
+      over: 32,
+      ball: 6,
+      runs: 1,
+      bowler: "Pat Cummins",
+      batsman: "Virat Kohli",
+      description: "Single taken. Good running between the wickets.",
+      isHighlight: false,
+      isWicket: false,
+      isFour: false,
+      isSix: false,
+    },
+    {
+      id: "2",
+      over: 32,
+      ball: 5,
+      runs: 0,
+      bowler: "Pat Cummins",
+      batsman: "Virat Kohli",
+      description:
+        "Dot ball. Good length delivery, defended back to the bowler.",
+      isHighlight: false,
+      isWicket: false,
+      isFour: false,
+      isSix: false,
+    },
+    {
+      id: "3",
+      over: 32,
+      ball: 4,
+      runs: 2,
+      bowler: "Pat Cummins",
+      batsman: "Virat Kohli",
+      description: "Two runs! Excellent placement through the covers.",
+      isHighlight: true,
+      isWicket: false,
+      isFour: false,
+      isSix: false,
+    },
+  ];
+
+  // Mock match data for LiveScore component
+  const mockMatch = {
+    _id: id || "1",
+    teamAId: { name: "India", shortName: "IND" },
+    teamBId: { name: "Australia", shortName: "AUS" },
+    venue: "Melbourne Cricket Ground",
+    startTime: new Date(),
+    status: "in_progress",
+    format: "ODI",
+    matchType: "ODI",
+    overs: 50,
+    currentInnings: 1,
+    currentOver: 32,
+    currentBall: 1,
+    score: {
+      teamA: { runs: 184, wickets: 4, overs: 32.1 },
+      teamB: { runs: 0, wickets: 0, overs: 0 },
+    },
+  };
+
   const tabs = [
     {
       id: "live",
       label: "Live Score",
       icon: FaRocket,
       component: (
-        <LiveScore
-          match={scorecard.matchSummary}
-          liveScorecard={liveScorecard}
-          currentInnings={currentInnings}
-          isConnected={isConnected}
-        />
+        <LiveScore match={mockMatch} innings={scorecard?.innings?.[0]} />
       ),
-    },
-    {
-      id: "batting",
-      label: "Batting",
-      icon: FaUsers,
-      component: (
-        <BattingScorecard
-          matchId={id!}
-          innings={currentInnings}
-          selectedInnings={selectedInnings}
-          onInningsChange={setSelectedInnings}
-        />
-      ),
-    },
-    {
-      id: "bowling",
-      label: "Bowling",
-      icon: FaChartBar,
-      component: (
-        <BowlingScorecard
-          matchId={id!}
-          innings={currentInnings}
-          selectedInnings={selectedInnings}
-          onInningsChange={setSelectedInnings}
-        />
-      ),
-    },
-    {
-      id: "fall-of-wickets",
-      label: "Fall of Wickets",
-      icon: FaTrophy,
-      component: (
-        <FallOfWickets
-          matchId={id!}
-          innings={currentInnings}
-          selectedInnings={selectedInnings}
-          onInningsChange={setSelectedInnings}
-        />
-      ),
-    },
-    {
-      id: "ball-by-ball",
-      label: "Ball by Ball",
-      icon: FaClock,
-      component: <BallByBall matchId={id!} />,
     },
     {
       id: "commentary",
       label: "Commentary",
       icon: FaMapMarkerAlt,
-      component: <Commentary matchId={id!} />,
-    },
-    {
-      id: "partnerships",
-      label: "Partnerships",
-      icon: FaUsers,
-      component: <Partnerships matchId={id!} />,
-    },
-    {
-      id: "power-plays",
-      label: "Power Plays",
-      icon: FaChartBar,
-      component: (
-        <PowerPlays
-          matchId={id!}
-          innings={currentInnings}
-          selectedInnings={selectedInnings}
-          onInningsChange={setSelectedInnings}
-        />
-      ),
+      component: <Commentary entries={mockCommentaryEntries} />,
     },
   ];
-
-  // Add additional tabs for completed matches
-  if (scorecard.matchSummary.status === "completed") {
-    tabs.push(
-      {
-        id: "highlights",
-        label: "Highlights",
-        icon: FaTrophy,
-        component: <MatchHighlights highlights={highlights} />,
-      },
-      {
-        id: "comparison",
-        label: "Team Comparison",
-        icon: FaChartBar,
-        component: <TeamComparison comparison={teamComparison} />,
-      }
-    );
-  }
 
   return (
     <div className="bg-white shadow-lg rounded-lg">
@@ -229,10 +193,12 @@ export const UserScorecard: React.FC<UserScorecardProps> = ({
           <div>
             <h1 className="text-3xl font-bold">
               {scorecard.matchSummary.name ||
-                `${scorecard.matchSummary.teamA.name} vs ${scorecard.matchSummary.teamB.name}`}
+                `${scorecard.matchSummary.teamA?.name || "Team A"} vs ${
+                  scorecard.matchSummary.teamB?.name || "Team B"
+                }`}
             </h1>
             <p className="text-blue-100 text-lg">
-              {scorecard.matchSummary.venue}
+              {scorecard.matchSummary.venue || "Venue TBD"}
             </p>
           </div>
           <div className="text-right">
@@ -246,7 +212,9 @@ export const UserScorecard: React.FC<UserScorecardProps> = ({
                     : "bg-yellow-500"
                 }`}
               >
-                {scorecard.matchSummary.status.replace("_", " ").toUpperCase()}
+                {scorecard.matchSummary.status
+                  ?.replace("_", " ")
+                  .toUpperCase() || "UNKNOWN"}
               </span>
               {isConnected && (
                 <span className="px-2 py-1 bg-green-500 rounded-full text-xs">
@@ -255,44 +223,16 @@ export const UserScorecard: React.FC<UserScorecardProps> = ({
               )}
             </div>
             <p className="text-blue-100 text-sm">
-              {scorecard.matchSummary.format} •{" "}
-              {scorecard.matchSummary.matchType}
+              {scorecard.matchSummary.format || "Format TBD"} •{" "}
+              {scorecard.matchSummary.matchType || "Type TBD"}
             </p>
-          </div>
-        </div>
-
-        {/* Team Scores Summary */}
-        <div className="grid grid-cols-2 gap-6">
-          <div className="bg-blue-800 rounded-lg p-4">
-            <h3 className="text-lg font-semibold mb-2">
-              {scorecard.matchSummary.teamA.name}
-            </h3>
-            {currentInnings &&
-              currentInnings.teamId === scorecard.matchSummary.teamA._id && (
-                <div className="text-2xl font-bold">
-                  {currentInnings.runs}/{currentInnings.wickets} (
-                  {currentInnings.overs} overs)
-                </div>
-              )}
-          </div>
-          <div className="bg-blue-800 rounded-lg p-4">
-            <h3 className="text-lg font-semibold mb-2">
-              {scorecard.matchSummary.teamB.name}
-            </h3>
-            {currentInnings &&
-              currentInnings.teamId === scorecard.matchSummary.teamB._id && (
-                <div className="text-2xl font-bold">
-                  {currentInnings.runs}/{currentInnings.wickets} (
-                  {currentInnings.overs} overs)
-                </div>
-              )}
           </div>
         </div>
       </div>
 
       {/* Navigation Tabs */}
       <div className="border-b border-gray-200">
-        <nav className="flex space-x-8 px-6 overflow-x-auto">
+        <div className="flex space-x-8 px-6 overflow-x-auto">
           {tabs.map((tab) => {
             const Icon = tab.icon;
             return (
@@ -310,12 +250,17 @@ export const UserScorecard: React.FC<UserScorecardProps> = ({
               </button>
             );
           })}
-        </nav>
+        </div>
       </div>
 
       {/* Tab Content */}
       <div className="p-6">
-        {tabs.find((tab) => tab.id === activeTab)?.component}
+        {tabs.find((tab) => tab.id === activeTab)?.component || (
+          <div className="text-center text-gray-500">
+            <div className="text-2xl font-bold mb-2">Tab Not Found</div>
+            <p>This tab is not yet implemented.</p>
+          </div>
+        )}
       </div>
     </div>
   );

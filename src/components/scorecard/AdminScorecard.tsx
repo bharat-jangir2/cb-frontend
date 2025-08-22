@@ -9,7 +9,7 @@ import { LiveScore } from "./LiveScore";
 import { BattingScorecard } from "./BattingScorecard";
 import { BowlingScorecard } from "./BowlingScorecard";
 import { BallByBall } from "./BallByBall";
-import { Commentary } from "./Commentary";
+
 import { Partnerships } from "./Partnerships";
 import { FallOfWickets } from "./FallOfWickets";
 import { PowerPlays } from "./PowerPlays";
@@ -28,6 +28,7 @@ import {
   FaRedo,
 } from "react-icons/fa";
 import { toast } from "react-hot-toast";
+import Commentary from "./Commentary";
 
 interface AdminScorecardProps {
   isAdmin?: boolean;

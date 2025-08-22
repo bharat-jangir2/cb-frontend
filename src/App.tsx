@@ -17,6 +17,8 @@ import UserDashboard from "./pages/UserDashboard";
 import Matches from "./pages/Matches";
 import Teams from "./pages/Teams";
 import MatchDetail from "./pages/MatchDetail";
+import LiveMatchPage from "./pages/LiveMatchPage";
+import PlayerProfile from "./pages/PlayerProfile";
 import AdminMatchDetail from "./pages/Admin/AdminMatchDetail";
 import Series from "./pages/Series";
 import Fixtures from "./pages/Fixtures";
@@ -78,8 +80,8 @@ const RoleBasedRedirect = () => {
     console.log("🔄 Redirecting scorer to /manage");
     return <Navigate to="/manage" replace />;
   } else {
-    console.log("🔄 Redirecting user to /user");
-    return <Navigate to="/user" replace />;
+    console.log("🔄 Redirecting user to /");
+    return <Navigate to="/" replace />;
   }
 };
 
@@ -152,10 +154,17 @@ function App() {
           <Route path="/rankings" element={<Rankings />} />
 
           {/* Root redirect based on role */}
-          <Route
-            path="/"
-            element={isAuthenticated ? <RoleBasedRedirect /> : <Home />}
-          />
+          <Route path="/" element={<UserLayout />}>
+            <Route index element={<Home />} />
+            <Route path="match/:id" element={<MatchDetail />} />
+            <Route path="live/:id" element={<LiveMatchPage />} />
+            <Route path="series/:id" element={<Series />} />
+            <Route path="team/:id" element={<Teams />} />
+            <Route path="player/:id" element={<PlayerProfile />} />
+            <Route path="fixtures" element={<Fixtures />} />
+            <Route path="stats" element={<Stats />} />
+            <Route path="rankings" element={<Rankings />} />
+          </Route>
 
           {/* Admin Routes - Dashboard style interface */}
           <Route
@@ -232,29 +241,6 @@ function App() {
             <Route path="community" element={<Community />} />
             <Route path="premium" element={<Premium />} />
           </Route>
-
-          {/* User Routes - Crex.live style interface */}
-          <Route
-            path="/user/*"
-            element={
-              <ProtectedRoute>
-                <UserLayout>
-                  <Routes>
-                    <Route index element={<UserDashboard />} />
-                    <Route path="matches" element={<Matches />} />
-                    <Route path="matches/:id" element={<MatchDetail />} />
-                    <Route path="teams" element={<Teams />} />
-                    <Route path="news" element={<News />} />
-                    <Route path="tournaments" element={<Tournaments />} />
-                    <Route path="fantasy" element={<Fantasy />} />
-                    <Route path="analytics" element={<Analytics />} />
-                    <Route path="community" element={<Community />} />
-                    <Route path="premium" element={<Premium />} />
-                  </Routes>
-                </UserLayout>
-              </ProtectedRoute>
-            }
-          />
 
           {/* Fallback */}
           <Route path="*" element={<Navigate to="/" replace />} />
