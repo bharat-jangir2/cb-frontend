@@ -237,7 +237,7 @@ export class MatchesAPIService {
       "data:",
       data
     );
-    const response = await apiClient.put(`/matches/${matchId}`, data);
+    const response = await apiClient.patch(`/matches/${matchId}`, data);
     console.log("MatchesAPIService.updateMatch response:", response.data);
     return response.data;
   }
@@ -266,7 +266,7 @@ export class MatchesAPIService {
       "data:",
       statusData
     );
-    const response = await apiClient.put(
+    const response = await apiClient.patch(
       `/matches/${matchId}/status`,
       statusData
     );

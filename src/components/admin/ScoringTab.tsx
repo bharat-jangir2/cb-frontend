@@ -1,8 +1,12 @@
 import React, { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "react-hot-toast";
-import { FaRocket, FaFlag, FaClock, FaMapMarkerAlt } from "react-icons/fa";
+import { FaRocket, FaFlag, FaClock, FaMapMarkerAlt, FaCircle } from "react-icons/fa";
 import { adminApi } from "../../services/admin";
+import { BallManagement } from "./BallManagement";
+import { UnifiedBallControl } from "./UnifiedBallControl";
+import { EnhancedBallControl } from "./EnhancedBallControl";
+import { MatchStatsDisplay } from "./MatchStatsDisplay";
 
 interface ScoringTabProps {
   matchId: string;
@@ -37,6 +41,9 @@ interface BatsmanStats {
 export const ScoringTab: React.FC<ScoringTabProps> = ({ matchId, match }) => {
   const queryClient = useQueryClient();
   
+  // Tab state
+  const [activeTab, setActiveTab] = useState<'scoring' | 'ball-management'>('ball-management');
+  
   // State for scoring
   const [currentRuns, setCurrentRuns] = useState(0);
   const [currentWickets, setCurrentWickets] = useState(0);
@@ -48,6 +55,7 @@ export const ScoringTab: React.FC<ScoringTabProps> = ({ matchId, match }) => {
   const [selectedNonStriker, setSelectedNonStriker] = useState<string>("");
   const [powerPlayOn, setPowerPlayOn] = useState(false);
   const [currentInnings, setCurrentInnings] = useState(1);
+  const [actionPopupOpen, setActionPopupOpen] = useState<string | null>(null);
 
   // Extra runs state
   const [extraRuns, setExtraRuns] = useState({
@@ -261,10 +269,40 @@ export const ScoringTab: React.FC<ScoringTabProps> = ({ matchId, match }) => {
     return `${fullOvers}.${balls}`;
   };
 
+  // Close popup when clicking outside
+  const handleClickOutside = (event: React.MouseEvent) => {
+    if (actionPopupOpen) {
+      setActionPopupOpen(null);
+    }
+  };
+
   return (
     <div className="space-y-6">
-      {/* Match Control Panel */}
+            {/* Enhanced Ball Control Section */}
+      <EnhancedBallControl
+        matchId={matchId}
+        userId="68a4b7e5e5dbb94da94b9923" // Replace with actual user ID
+        currentInnings={currentInnings}
+        currentOver={currentOvers}
+        currentBall={currentBalls}
+      />
+
+      {/* Match Stats Display */}
+      <MatchStatsDisplay />
+
+      {/* Legacy Ball Management Section */}
+      <BallManagement 
+        matchId={matchId} 
+        inningsNumber={currentInnings} 
+        isAdmin={true} 
+      />
+
+      {/* Manual Scoring Section */}
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+        <h3 className="text-lg font-semibold text-gray-900 mb-4">Manual Scoring</h3>
+        
+        {/* Match Control Panel */}
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center space-x-4">
             <span className="text-sm text-gray-600">
@@ -421,21 +459,30 @@ export const ScoringTab: React.FC<ScoringTabProps> = ({ matchId, match }) => {
         {/* Scoreboard (Left Panel) */}
         <div className="bg-white rounded-lg shadow-sm border border-gray-200">
           <div className="bg-purple-600 text-white px-4 py-3 rounded-t-lg">
-            <h3 className="font-semibold">Scoreboard</h3>
+                         <h3 className="font-semibold flex items-center">
+               <span className="text-orange-600 mr-2 size-6 flex items-center justify-center w-6 h-6 rounded-2xl bg-orange-50">
+                 <FaCircle className="text-red-600" />
+               </span>
+               Scoreboard
+             </h3>
           </div>
           <div className="p-4">
             <div className="mb-4">
-              <p className="text-sm text-gray-600 mb-2">
-                {match?.tossWinner?.name} Won The Toss and Choose Batting
-              </p>
-              <div className="flex space-x-2 mb-4">
-                <button className="px-3 py-1 bg-purple-600 text-white rounded text-sm">
-                  Updateball
-                </button>
-                <button className="px-3 py-1 bg-gray-600 text-white rounded text-sm">
-                  Update
-                </button>
-              </div>
+                             <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
+                 <p className="text-sm text-blue-800 font-medium">
+                   {match?.tossWinner?.name} Won The Toss and Choose Batting
+                 </p>
+               </div>
+                <div className="flex space-x-2 mb-4">
+                 <input
+                   type="text"
+                   placeholder="Update ball"
+                   className="px-3 py-1 border border-gray-300 rounded text-sm flex-1"
+                 />
+                 <button className="px-3 py-1 bg-gray-600 text-white rounded text-sm">
+                   Update
+                 </button>
+               </div>
             </div>
 
             <div className="space-y-3">
@@ -521,14 +568,74 @@ export const ScoringTab: React.FC<ScoringTabProps> = ({ matchId, match }) => {
                         />
                       </td>
                       <td className="py-2 font-medium">{bowler.playerName}</td>
-                      <td className="py-2">{bowler.overs}</td>
-                      <td className="py-2">{bowler.maidens}</td>
-                      <td className="py-2">{bowler.runs}</td>
-                      <td className="py-2">{bowler.wickets}</td>
                       <td className="py-2">
-                        <button className="text-gray-400 hover:text-gray-600">
+                        <input
+                          type="number"
+                          value={bowler.overs}
+                          className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
+                        />
+                      </td>
+                      <td className="py-2">
+                        <input
+                          type="number"
+                          value={bowler.maidens}
+                          className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
+                        />
+                      </td>
+                      <td className="py-2">
+                        <input
+                          type="number"
+                          value={bowler.runs}
+                          className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
+                        />
+                      </td>
+                      <td className="py-2">
+                        <input
+                          type="number"
+                          value={bowler.wickets}
+                          className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
+                        />
+                      </td>
+                      <td className="py-2 relative">
+                        <button 
+                          className="text-gray-400 hover:text-gray-600 p-1 rounded hover:bg-gray-100"
+                          onClick={() => setActionPopupOpen(actionPopupOpen === bowler.playerId ? null : bowler.playerId)}
+                        >
                           ⋮
                         </button>
+                        {actionPopupOpen === bowler.playerId && (
+                          <div className="absolute right-0 top-8 bg-white border border-gray-200 rounded-lg shadow-lg z-10 min-w-[120px]">
+                            <div className="py-1">
+                              <button 
+                                className="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                                onClick={() => {
+                                  setActionPopupOpen(null);
+                                  // Handle edit player
+                                }}
+                              >
+                                Edit Player
+                              </button>
+                              <button 
+                                className="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                                onClick={() => {
+                                  setActionPopupOpen(null);
+                                  // Handle view stats
+                                }}
+                              >
+                                View Stats
+                              </button>
+                              <button 
+                                className="w-full text-left px-3 py-2 text-sm text-red-600 hover:bg-red-50"
+                                onClick={() => {
+                                  setActionPopupOpen(null);
+                                  // Handle remove
+                                }}
+                              >
+                                Remove
+                              </button>
+                            </div>
+                          </div>
+                        )}
                       </td>
                     </tr>
                   ))}
@@ -567,16 +674,17 @@ export const ScoringTab: React.FC<ScoringTabProps> = ({ matchId, match }) => {
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b border-gray-200">
-                    <th className="text-left py-2">ST</th>
-                    <th className="text-left py-2">Strike Batsmen</th>
-                    <th className="text-left py-2">Runs</th>
-                    <th className="text-left py-2">Balls</th>
-                    <th className="text-left py-2">4s</th>
-                    <th className="text-left py-2">6s</th>
-                    <th className="text-left py-2">TO</th>
-                    <th className="text-left py-2">TR</th>
-                  </tr>
+                                     <tr className="border-b border-gray-200">
+                     <th className="text-left py-2">ST</th>
+                     <th className="text-left py-2">Strike Batsmen</th>
+                     <th className="text-left py-2">Runs</th>
+                     <th className="text-left py-2">Balls</th>
+                     <th className="text-left py-2">4s</th>
+                     <th className="text-left py-2">6s</th>
+                     <th className="text-left py-2">TO</th>
+                     <th className="text-left py-2">Status</th>
+                     <th className="text-left py-2"></th>
+                   </tr>
                 </thead>
                 <tbody>
                   {batsmen.map((batsman) => (
@@ -593,12 +701,95 @@ export const ScoringTab: React.FC<ScoringTabProps> = ({ matchId, match }) => {
                         </div>
                       </td>
                       <td className="py-2 font-medium">{batsman.playerName}</td>
-                      <td className="py-2">{batsman.runs}</td>
-                      <td className="py-2">{batsman.balls}</td>
-                      <td className="py-2">{batsman.fours}</td>
-                      <td className="py-2">{batsman.sixes}</td>
-                      <td className="py-2">-</td>
-                      <td className="py-2">-</td>
+                      <td className="py-2">
+                        <input
+                          type="number"
+                          value={batsman.runs || 0}
+                          className="w-16 px-2 py-1 border border-gray-300 rounded text-sm text-center"
+                          min="0"
+                        />
+                      </td>
+                      <td className="py-2">
+                        <input
+                          type="number"
+                          value={batsman.balls || 0}
+                          className="w-16 px-2 py-1 border border-gray-300 rounded text-sm text-center"
+                          min="0"
+                        />
+                      </td>
+                      <td className="py-2">
+                        <input
+                          type="number"
+                          value={batsman.fours || 0}
+                          className="w-16 px-2 py-1 border border-gray-300 rounded text-sm text-center"
+                          min="0"
+                        />
+                      </td>
+                      <td className="py-2">
+                        <input
+                          type="number"
+                          value={batsman.sixes || 0}
+                          className="w-16 px-2 py-1 border border-gray-300 rounded text-sm text-center"
+                          min="0"
+                        />
+                      </td>
+                      <td className="py-2">
+                        <input
+                          type="number"
+                          value={batsman.strikeRate || 0}
+                          className="w-16 px-2 py-1 border border-gray-300 rounded text-sm text-center"
+                          min="0"
+                          step="0.01"
+                        />
+                      </td>
+                                             <td className="py-2">
+                         {batsman.isOut ? (
+                           <span className="text-red-600 text-sm font-medium">Out</span>
+                         ) : (
+                           <span className="text-green-600 text-sm font-medium">Not out</span>
+                         )}
+                       </td>
+                       <td className="py-2 relative">
+                         <button 
+                           className="text-gray-400 hover:text-gray-600 p-1 rounded hover:bg-gray-100"
+                           onClick={() => setActionPopupOpen(actionPopupOpen === batsman.playerId ? null : batsman.playerId)}
+                         >
+                           ⋮
+                         </button>
+                         {actionPopupOpen === batsman.playerId && (
+                           <div className="absolute right-0 top-8 bg-white border border-gray-200 rounded-lg shadow-lg z-10 min-w-[120px]">
+                             <div className="py-1">
+                               <button 
+                                 className="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                                 onClick={() => {
+                                   setActionPopupOpen(null);
+                                   // Handle edit player
+                                 }}
+                               >
+                                 Edit Player
+                               </button>
+                               <button 
+                                 className="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                                 onClick={() => {
+                                   setActionPopupOpen(null);
+                                   // Handle view stats
+                                 }}
+                               >
+                                 View Stats
+                               </button>
+                               <button 
+                                 className="w-full text-left px-3 py-2 text-sm text-red-600 hover:bg-red-50"
+                                 onClick={() => {
+                                   setActionPopupOpen(null);
+                                   // Handle remove
+                                 }}
+                               >
+                                 Remove
+                               </button>
+                             </div>
+                           </div>
+                         )}
+                       </td>
                     </tr>
                   ))}
                 </tbody>
@@ -615,6 +806,7 @@ export const ScoringTab: React.FC<ScoringTabProps> = ({ matchId, match }) => {
             </div>
           </div>
         </div>
+      </div>
       </div>
     </div>
   );

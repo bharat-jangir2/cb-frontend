@@ -376,7 +376,7 @@ class AdminApi {
       "data:",
       statusData
     );
-    const response = await apiClient.put<AdminApiResponse<Match>>(
+    const response = await apiClient.patch<AdminApiResponse<Match>>(
       `/matches/${id}/status`,
       statusData
     );

@@ -8,6 +8,9 @@ import {
   FaCrown,
   FaUser,
   FaArrowLeft,
+  FaUsers,
+  FaSpinner,
+  FaExclamationTriangle,
 } from "react-icons/fa";
 import Scoreboard from "../components/scorecard/Scoreboard";
 import OverProgress from "../components/scorecard/OverProgress";
@@ -15,6 +18,18 @@ import Commentary from "../components/scorecard/Commentary";
 import ProbabilityBar from "../components/scorecard/ProbabilityBar";
 import ProjectedScore from "../components/scorecard/ProjectedScore";
 import MatchInfoCard from "../components/scorecard/MatchInfoCard";
+import PlayingXI from "../components/matches/PlayingXI";
+import WebSocketStatus from "../components/common/WebSocketStatus";
+import { useScorecardWebSocket } from "../hooks/useScorecardWebSocket";
+import { unifiedScorecardService } from "../services/unified-scorecard.service";
+import { scorecardService } from "../services/scorecard.service";
+import type { 
+  UnifiedScorecard, 
+  LiveScorecard, 
+  InningsScorecard,
+  CommentaryEntry,
+  PartnershipSummary 
+} from "../types/scorecard";
 
 interface LiveMatchPageProps {}
 
@@ -23,6 +38,10 @@ const LiveMatchPage: React.FC<LiveMatchPageProps> = () => {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState("live");
   const [commentaryFilter, setCommentaryFilter] = useState("All");
+  const [liveData, setLiveData] = useState<LiveScorecard | null>(null);
+  const [scorecardData, setScorecardData] = useState<UnifiedScorecard | null>(null);
+  const [commentaryData, setCommentaryData] = useState<CommentaryEntry[]>([]);
+  const [partnershipData, setPartnershipData] = useState<PartnershipSummary[]>([]);
 
   // Add viewport meta tag for mobile optimization
   useEffect(() => {
@@ -36,189 +55,226 @@ const LiveMatchPage: React.FC<LiveMatchPageProps> = () => {
     }
   }, []);
 
-  // Mock data - replace with actual API calls
-  const mockMatch = {
-    id: id || "1",
-    teamA: {
-      name: "India",
-      shortName: "IND",
-      runs: 184,
-      wickets: 4,
-      overs: 32.1,
-      isBatting: true,
+  // Fetch unified scorecard data
+  const {
+    data: scorecard,
+    isLoading: scorecardLoading,
+    error: scorecardError,
+    refetch: refetchScorecard,
+  } = useQuery({
+    queryKey: ["scorecard", id],
+    queryFn: () => unifiedScorecardService.getScorecard(id!),
+    enabled: !!id,
+    refetchInterval: 30000, // Refetch every 30 seconds
+  });
+
+  // Fetch live scorecard data
+  const {
+    data: liveScorecard,
+    isLoading: liveScorecardLoading,
+    error: liveScorecardError,
+    refetch: refetchLiveScorecard,
+  } = useQuery({
+    queryKey: ["liveScorecard", id],
+    queryFn: () => unifiedScorecardService.getLiveScorecard(id!),
+    enabled: !!id,
+    refetchInterval: 5000, // Refetch every 5 seconds for live data
+  });
+
+  // Fetch commentary data
+  const {
+    data: commentary,
+    isLoading: commentaryLoading,
+    error: commentaryError,
+  } = useQuery({
+    queryKey: ["commentary", id],
+    queryFn: () => unifiedScorecardService.getCommentary(id!),
+    enabled: !!id,
+    refetchInterval: 10000, // Refetch every 10 seconds
+  });
+
+  // Fetch partnerships data
+  const {
+    data: partnerships,
+    isLoading: partnershipsLoading,
+    error: partnershipsError,
+  } = useQuery({
+    queryKey: ["partnerships", id],
+    queryFn: () => unifiedScorecardService.getPartnerships(id!),
+    enabled: !!id,
+    refetchInterval: 15000, // Refetch every 15 seconds
+  });
+
+  // WebSocket integration for real-time updates
+  const {
+    joinScorecard,
+    leaveScorecard,
+    getScorecard,
+    getLiveScorecard,
+    getConnectionStatus,
+    reconnect,
+    isConnected,
+  } = useScorecardWebSocket({
+    matchId: id!,
+    enabled: !!id,
+    onScorecardUpdate: (scorecard: UnifiedScorecard) => {
+      console.log("Live scorecard update received:", scorecard);
+      setScorecardData(scorecard);
+      refetchScorecard();
     },
-    teamB: {
-      name: "Australia",
-      shortName: "AUS",
-      runs: 0,
-      wickets: 0,
-      overs: 0,
-      isBatting: false,
+    onLiveScorecardUpdate: (liveScorecard: LiveScorecard) => {
+      console.log("Live scorecard update received:", liveScorecard);
+      setLiveData(liveScorecard);
+      refetchLiveScorecard();
     },
-    currentRR: 5.73,
-    requiredRR: 8.5,
-    target: 320,
-    remainingRuns: 136,
-    remainingBalls: 107,
-    lastBall: 4,
-    status: "live" as const,
-    venue: "Melbourne Cricket Ground",
-    date: "2025-01-20",
-    time: "14:30",
-    series: "Border-Gavaskar Trophy 2025",
-    format: "ODI",
-    toss: {
-      winner: "India",
-      decision: "bat",
+    onCommentaryAdded: (data) => {
+      console.log("New commentary received:", data);
+      if (data.commentary) {
+        setCommentaryData(prev => [data.commentary, ...prev]);
+      }
     },
-    umpires: ["Kumar Dharmasena", "Richard Kettleborough"],
-    matchReferee: "Jeff Crowe",
+    onPartnershipUpdate: (data) => {
+      console.log("Partnership update received:", data);
+      if (data.partnership) {
+        setPartnershipData(prev => [data.partnership, ...prev]);
+      }
+    },
+    onMatchStatusChange: (data) => {
+      console.log("Match status changed:", data);
+      refetchScorecard();
+      refetchLiveScorecard();
+    },
+    onError: (error) => {
+      console.error("WebSocket error:", error);
+    },
+  });
+
+  // Update state when data changes
+  useEffect(() => {
+    if (scorecard) {
+      setScorecardData(scorecard);
+    }
+  }, [scorecard]);
+
+  useEffect(() => {
+    if (liveScorecard) {
+      setLiveData(liveScorecard);
+    }
+  }, [liveScorecard]);
+
+  useEffect(() => {
+    if (commentary) {
+      setCommentaryData(commentary);
+    }
+  }, [commentary]);
+
+  useEffect(() => {
+    if (partnerships) {
+      setPartnershipData(partnerships);
+    }
+  }, [partnerships]);
+
+  // Prepare data for components
+  const currentMatch = scorecardData?.matchSummary;
+  const currentInnings = scorecardData?.innings?.find(
+    (inning) => inning.inningNumber === liveData?.currentInnings
+  );
+
+  // Transform data for Scoreboard component
+  const teamAData = {
+    name: currentMatch?.teamA?.name || "Team A",
+    shortName: currentMatch?.teamA?.shortName || "A",
+    runs: liveData?.teamAScore?.runs || 0,
+    wickets: liveData?.teamAScore?.wickets || 0,
+    overs: liveData?.teamAScore?.overs || 0,
+    isBatting: liveData?.currentInnings === 1,
   };
 
-  const mockOvers = [
-    {
-      overNumber: 32,
-      balls: [
-        { runs: 1, isWicket: false },
-        { runs: 0, isWicket: false },
-        { runs: 4, isWicket: false },
-        { runs: 2, isWicket: false },
-        { runs: 0, isWicket: false },
-        { runs: 1, isWicket: false },
-      ],
-      isCurrentOver: true,
-    },
-    {
-      overNumber: 31,
-      balls: [
-        { runs: 0, isWicket: false },
-        { runs: 1, isWicket: false },
-        { runs: 0, isWicket: false },
-        { runs: 4, isWicket: false },
-        { runs: 0, isWicket: false },
-        { runs: 1, isWicket: false },
-      ],
-      isCurrentOver: false,
-    },
-    {
-      overNumber: 30,
-      balls: [
-        { runs: 1, isWicket: false },
-        { runs: 0, isWicket: false },
-        { runs: 2, isWicket: false },
-        { runs: 0, isWicket: false },
-        { runs: 1, isWicket: false },
-        { runs: 0, isWicket: false },
-      ],
-      isCurrentOver: false,
-    },
-  ];
+  const teamBData = {
+    name: currentMatch?.teamB?.name || "Team B",
+    shortName: currentMatch?.teamB?.shortName || "B",
+    runs: liveData?.teamBScore?.runs || 0,
+    wickets: liveData?.teamBScore?.wickets || 0,
+    overs: liveData?.teamBScore?.overs || 0,
+    isBatting: liveData?.currentInnings === 2,
+  };
 
-  const mockCommentary = [
-    {
-      id: "1",
-      over: 32,
-      ball: 6,
-      runs: 1,
-      bowler: "Pat Cummins",
-      batsman: "Virat Kohli",
-      description: "Single taken. Good running between the wickets.",
-      isHighlight: false,
-      isWicket: false,
-      isFour: false,
-      isSix: false,
-    },
-    {
-      id: "2",
-      over: 32,
-      ball: 5,
-      runs: 0,
-      bowler: "Pat Cummins",
-      batsman: "Virat Kohli",
-      description:
-        "Dot ball. Good length delivery, defended back to the bowler.",
-      isHighlight: false,
-      isWicket: false,
-      isFour: false,
-      isSix: false,
-    },
-    {
-      id: "3",
-      over: 32,
-      ball: 4,
-      runs: 2,
-      bowler: "Pat Cummins",
-      batsman: "Virat Kohli",
-      description: "Two runs! Excellent placement through the covers.",
-      isHighlight: true,
-      isWicket: false,
-      isFour: false,
-      isSix: false,
-    },
-    {
-      id: "4",
-      over: 32,
-      ball: 3,
-      runs: 4,
-      bowler: "Pat Cummins",
-      batsman: "Virat Kohli",
-      description: "FOUR! Beautiful cover drive! That's a boundary.",
-      isHighlight: true,
-      isWicket: false,
-      isFour: true,
-      isSix: false,
-    },
-    {
-      id: "5",
-      over: 32,
-      ball: 2,
-      runs: 0,
-      bowler: "Pat Cummins",
-      batsman: "Virat Kohli",
-      description: "Dot ball. Yorker length, dug out safely.",
-      isHighlight: false,
-      isWicket: false,
-      isFour: false,
-      isSix: false,
-    },
-    {
-      id: "6",
-      over: 32,
-      ball: 1,
-      runs: 1,
-      bowler: "Pat Cummins",
-      batsman: "Virat Kohli",
-      description: "Single taken. Good length delivery, worked to mid-wicket.",
-      isHighlight: false,
-      isWicket: false,
-      isFour: false,
-      isSix: false,
-    },
-  ];
+  // Calculate derived values
+  const currentRR = liveData?.currentRunRate || 0;
+  const requiredRR = liveData?.requiredRunRate || 0;
+  const target = teamAData.isBatting ? undefined : teamAData.runs;
+  const remainingRuns = liveData?.remainingRuns || 0;
+  const remainingBalls = liveData?.remainingBalls || 0;
+  const lastBall = liveData?.lastBall?.runs || 0;
+  const status = currentMatch?.status === "in_progress" ? "live" : 
+                 currentMatch?.status === "abandoned" ? "completed" : 
+                 (currentMatch?.status || "scheduled");
 
-  const mockCurrentPlayers = [
-    {
-      name: "Virat Kohli",
+  // Transform commentary data for Commentary component
+  const transformedCommentary = commentaryData.map((entry) => ({
+    id: entry.ball,
+    over: entry.over,
+    ball: entry.ballNumber,
+    runs: entry.runs,
+    bowler: entry.bowlerName,
+    batsman: entry.batsmanName,
+    description: entry.comment,
+    isHighlight: entry.event.includes("FOUR") || entry.event.includes("SIX") || entry.event.includes("WICKET"),
+    isWicket: entry.event.includes("WICKET"),
+    isFour: entry.event.includes("FOUR"),
+    isSix: entry.event.includes("SIX"),
+  }));
+
+  // Transform current players data
+  const currentPlayers = [];
+  if (liveData?.currentBatsmen?.striker) {
+    currentPlayers.push({
+      name: liveData.currentBatsmen.striker.name,
       role: "Batsman",
-      score: "85 (72)",
+      score: `${liveData.currentBatsmen.striker.runs} (${liveData.currentBatsmen.striker.balls})`,
       isStriker: true,
       type: "batsman",
-    },
-    {
-      name: "Rohit Sharma",
+    });
+  }
+  if (liveData?.currentBatsmen?.nonStriker) {
+    currentPlayers.push({
+      name: liveData.currentBatsmen.nonStriker.name,
       role: "Batsman",
-      score: "45 (38)",
+      score: `${liveData.currentBatsmen.nonStriker.runs} (${liveData.currentBatsmen.nonStriker.balls})`,
       isStriker: false,
       type: "batsman",
-    },
-    {
-      name: "Pat Cummins",
+    });
+  }
+  if (liveData?.currentBowler) {
+    currentPlayers.push({
+      name: liveData.currentBowler.name,
       role: "Bowler",
-      score: "2/45",
+      score: `${liveData.currentBowler.wickets}/${liveData.currentBowler.runs}`,
       isStriker: false,
       type: "bowler",
-    },
-  ];
+    });
+  }
+
+  // Transform overs data for OverProgress component
+  const oversData = [];
+  if (currentInnings) {
+    // Create mock overs data based on current innings
+    // In a real implementation, this would come from ball-by-ball data
+    for (let i = Math.max(1, liveData?.currentOver || 1); i >= Math.max(1, (liveData?.currentOver || 1) - 2); i--) {
+      oversData.push({
+        overNumber: i,
+        balls: [
+          { runs: Math.floor(Math.random() * 7), isWicket: false },
+          { runs: Math.floor(Math.random() * 7), isWicket: false },
+          { runs: Math.floor(Math.random() * 7), isWicket: false },
+          { runs: Math.floor(Math.random() * 7), isWicket: false },
+          { runs: Math.floor(Math.random() * 7), isWicket: false },
+          { runs: Math.floor(Math.random() * 7), isWicket: false },
+        ],
+        isCurrentOver: i === liveData?.currentOver,
+      });
+    }
+  }
 
   const tabs = [
     { id: "matchinfo", label: "Match Info" },
@@ -233,6 +289,39 @@ const LiveMatchPage: React.FC<LiveMatchPageProps> = () => {
     { id: "partnerships", label: "Partnerships" },
     { id: "powerplays", label: "Power Plays" },
   ];
+
+  // Loading state
+  if (scorecardLoading || liveScorecardLoading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <FaSpinner className="animate-spin text-blue-500 text-4xl mx-auto mb-4" />
+          <p className="text-gray-600">Loading live match data...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Error state
+  if (scorecardError || liveScorecardError) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <FaExclamationTriangle className="text-red-500 text-4xl mx-auto mb-4" />
+          <p className="text-gray-600 mb-4">Failed to load match data</p>
+          <button
+            onClick={() => {
+              refetchScorecard();
+              refetchLiveScorecard();
+            }}
+            className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600"
+          >
+            Retry
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -257,6 +346,11 @@ const LiveMatchPage: React.FC<LiveMatchPageProps> = () => {
                 <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-red-500 rounded-full animate-pulse"></div>
                 <span className="text-xs sm:text-sm font-medium">LIVE</span>
               </div>
+                <WebSocketStatus 
+                  isConnected={isConnected}
+                  lastUpdateTime={liveData?.lastUpdateTime ? new Date(liveData.lastUpdateTime) : undefined}
+                  matchId={id}
+                />
               <button className="p-1 sm:p-2 hover:bg-blue-800 rounded-lg transition-colors">
                 <FaExpand className="text-xs sm:text-sm" />
               </button>
@@ -269,8 +363,7 @@ const LiveMatchPage: React.FC<LiveMatchPageProps> = () => {
       <div className="bg-white border-b border-gray-200">
         <div className="max-w-7xl mx-auto px-2 sm:px-4 lg:px-8 py-1 sm:py-2 lg:py-3">
           <h1 className="text-xs sm:text-sm lg:text-lg font-semibold text-gray-900 text-center">
-            {mockMatch.teamA.name} vs {mockMatch.teamB.name}, {mockMatch.format}{" "}
-            Match Live
+            {teamAData.name} vs {teamBData.name}, {currentMatch?.format || "ODI"} Match Live
           </h1>
         </div>
       </div>
@@ -305,15 +398,15 @@ const LiveMatchPage: React.FC<LiveMatchPageProps> = () => {
               {/* Scoreboard */}
               <div className="transform transition-all duration-200 hover:scale-[1.02]">
                 <Scoreboard
-                  teamA={mockMatch.teamA}
-                  teamB={mockMatch.teamB}
-                  currentRR={mockMatch.currentRR}
-                  requiredRR={mockMatch.requiredRR}
-                  target={mockMatch.target}
-                  remainingRuns={mockMatch.remainingRuns}
-                  remainingBalls={mockMatch.remainingBalls}
-                  lastBall={mockMatch.lastBall}
-                  status={mockMatch.status}
+                  teamA={teamAData}
+                  teamB={teamBData}
+                  currentRR={currentRR}
+                  requiredRR={requiredRR}
+                  target={target}
+                  remainingRuns={remainingRuns}
+                  remainingBalls={remainingBalls}
+                  lastBall={lastBall}
+                  status={status}
                 />
               </div>
 
@@ -323,7 +416,8 @@ const LiveMatchPage: React.FC<LiveMatchPageProps> = () => {
                   Current Players & Partnership
                 </h3>
                 <div className="space-y-2 sm:space-y-4">
-                  {mockCurrentPlayers.map((player, index) => (
+                  {currentPlayers.length > 0 ? (
+                    currentPlayers.map((player, index) => (
                     <div
                       key={index}
                       className="flex items-center space-x-2 sm:space-x-3"
@@ -360,16 +454,24 @@ const LiveMatchPage: React.FC<LiveMatchPageProps> = () => {
                         </div>
                       </div>
                     </div>
-                  ))}
+                    ))
+                  ) : (
+                    <div className="text-center py-4 text-gray-500">
+                      <FaSpinner className="animate-spin text-gray-400 text-xl mx-auto mb-2" />
+                      <p className="text-sm">Loading current players...</p>
+                    </div>
+                  )}
                 </div>
+                {partnershipData.length > 0 && (
                 <div className="mt-2 sm:mt-4 pt-2 sm:pt-4 border-t border-gray-200">
                   <div className="text-xs sm:text-sm text-gray-600">
                     Partnership
                   </div>
                   <div className="text-sm sm:text-lg font-bold text-gray-900">
-                    130 runs (15.2 overs)
+                      {partnershipData[0]?.runs || 0} runs ({partnershipData[0]?.balls || 0} balls)
                   </div>
                 </div>
+                )}
               </div>
 
               {/* Over Progress */}
@@ -378,14 +480,21 @@ const LiveMatchPage: React.FC<LiveMatchPageProps> = () => {
                   Over Progress
                 </h3>
                 <div className="space-y-2 sm:space-y-4">
-                  {mockOvers.map((over) => (
+                  {oversData.length > 0 ? (
+                    oversData.map((over) => (
                     <OverProgress
                       key={over.overNumber}
                       overNumber={over.overNumber}
                       balls={over.balls}
                       isCurrentOver={over.isCurrentOver}
                     />
-                  ))}
+                    ))
+                  ) : (
+                    <div className="text-center py-4 text-gray-500">
+                      <FaSpinner className="animate-spin text-gray-400 text-xl mx-auto mb-2" />
+                      <p className="text-sm">Loading over progress...</p>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -394,7 +503,7 @@ const LiveMatchPage: React.FC<LiveMatchPageProps> = () => {
             <div className="lg:col-span-1">
               <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-3 sm:p-6 transform transition-all duration-200 hover:shadow-md h-fit">
                 <Commentary
-                  entries={mockCommentary}
+                  entries={transformedCommentary}
                   activeFilter={commentaryFilter}
                   onFilterChange={setCommentaryFilter}
                 />
@@ -408,33 +517,58 @@ const LiveMatchPage: React.FC<LiveMatchPageProps> = () => {
                 <ProbabilityBar
                   teamAProbability={65}
                   teamBProbability={35}
-                  teamAName={mockMatch.teamA.name}
-                  teamBName={mockMatch.teamB.name}
+                  teamAName={teamAData.name}
+                  teamBName={teamBData.name}
                 />
               </div>
 
               {/* Projected Score */}
               <div className="transform transition-all duration-200 hover:scale-[1.02]">
                 <ProjectedScore
-                  currentScore={mockMatch.teamA.runs}
-                  currentOvers={mockMatch.teamA.overs}
-                  totalOvers={50}
+                  currentScore={teamAData.isBatting ? teamAData.runs : teamBData.runs}
+                  currentOvers={teamAData.isBatting ? teamAData.overs : teamBData.overs}
+                  totalOvers={currentMatch?.format === "T20" ? 20 : 50}
                 />
               </div>
 
-              {/* Match Info */}
+              {/* Playing XI Preview */}
               <div className="transform transition-all duration-200 hover:scale-[1.02]">
-                <MatchInfoCard
-                  venue={mockMatch.venue}
-                  date={mockMatch.date}
-                  time={mockMatch.time}
-                  series={mockMatch.series}
-                  format={mockMatch.format}
-                  toss={mockMatch.toss}
-                  umpires={mockMatch.umpires}
-                  matchReferee={mockMatch.matchReferee}
-                />
+                <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+                  <div className="flex items-center justify-between mb-3">
+                    <h3 className="text-sm font-semibold text-gray-900">
+                      Playing XI Preview
+                    </h3>
+                                         <button
+                       onClick={() => setActiveTab("matchinfo")}
+                       className="text-blue-600 hover:text-blue-700 text-sm font-medium"
+                     >
+                       View Full
+                     </button>
+                  </div>
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="text-gray-600">Team A:</span>
+                      <span className="font-medium">
+                        {teamAData.name} XI
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="text-gray-600">Team B:</span>
+                      <span className="font-medium">
+                        {teamBData.name} XI
+                      </span>
+                    </div>
+                    <div className="mt-3 pt-2 border-t border-gray-100">
+                      <div className="flex items-center text-xs text-gray-500">
+                        <FaUsers className="mr-1" />
+                        <span>Tap "View Full" to see complete squad</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
               </div>
+
+
             </div>
           </div>
         )}
@@ -448,14 +582,14 @@ const LiveMatchPage: React.FC<LiveMatchPageProps> = () => {
               </h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
                 <MatchInfoCard
-                  venue={mockMatch.venue}
-                  date={mockMatch.date}
-                  time={mockMatch.time}
-                  series={mockMatch.series}
-                  format={mockMatch.format}
-                  toss={mockMatch.toss}
-                  umpires={mockMatch.umpires}
-                  matchReferee={mockMatch.matchReferee}
+                  venue={currentMatch?.venue || "TBD"}
+                  date={currentMatch?.startTime ? new Date(currentMatch.startTime).toLocaleDateString() : "TBD"}
+                  time={currentMatch?.startTime ? new Date(currentMatch.startTime).toLocaleTimeString() : "TBD"}
+                  series={currentMatch?.matchType || "TBD"}
+                  format={currentMatch?.format || "ODI"}
+                  toss={currentMatch?.toss ? { winner: currentMatch.toss.winner, decision: currentMatch.toss.electedTo } : { winner: "TBD", decision: "TBD" }}
+                  umpires={["TBD", "TBD"]}
+                  matchReferee="TBD"
                 />
 
                 {/* Additional Match Details */}
@@ -468,30 +602,41 @@ const LiveMatchPage: React.FC<LiveMatchPageProps> = () => {
                       <span className="text-sm text-gray-600">
                         Total Overs:
                       </span>
-                      <span className="text-sm font-medium">50</span>
+                      <span className="text-sm font-medium">
+                        {currentMatch?.format === "T20" ? 20 : currentMatch?.format === "TEST" ? "Unlimited" : 50}
+                      </span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-sm text-gray-600">
-                        Power Play 1:
+                        Current Status:
                       </span>
-                      <span className="text-sm font-medium">Overs 1-10</span>
+                      <span className="text-sm font-medium capitalize">
+                        {currentMatch?.status?.replace("_", " ") || "TBD"}
+                      </span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-sm text-gray-600">
-                        Power Play 2:
+                        WebSocket Status:
                       </span>
-                      <span className="text-sm font-medium">Overs 11-40</span>
+                      <span className={`text-sm font-medium ${isConnected ? 'text-green-600' : 'text-red-600'}`}>
+                        {isConnected ? 'Connected' : 'Disconnected'}
+                      </span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-sm text-gray-600">
-                        Power Play 3:
+                        Last Update:
                       </span>
-                      <span className="text-sm font-medium">Overs 41-50</span>
+                      <span className="text-sm font-medium">
+                        {liveData?.lastUpdateTime ? new Date(liveData.lastUpdateTime).toLocaleTimeString() : "TBD"}
+                      </span>
                     </div>
                   </div>
                 </div>
               </div>
             </div>
+
+            {/* Playing XI Section */}
+            <PlayingXI matchId={id || "1"} />
           </div>
         )}
 
@@ -503,10 +648,11 @@ const LiveMatchPage: React.FC<LiveMatchPageProps> = () => {
                 Full Scorecard
               </h2>
 
-              {/* Team A Batting */}
-              <div className="mb-6">
+              {scorecardData?.innings && scorecardData.innings.length > 0 ? (
+                scorecardData.innings.map((inning) => (
+                  <div key={inning.inningNumber} className="mb-6">
                 <h3 className="text-base font-semibold text-gray-900 mb-3">
-                  {mockMatch.teamA.name} Batting
+                      {inning.teamName} Batting
                 </h3>
                 <div className="overflow-x-auto">
                   <table className="min-w-full text-sm">
@@ -533,39 +679,26 @@ const LiveMatchPage: React.FC<LiveMatchPageProps> = () => {
                       </tr>
                     </thead>
                     <tbody>
-                      <tr className="border-b border-gray-100">
+                          {inning.batting.map((batsman) => (
+                            <tr key={batsman.playerId} className="border-b border-gray-100">
                         <td className="py-2 font-medium text-gray-900">
-                          Virat Kohli
+                                {batsman.playerName}
                         </td>
-                        <td className="py-2 text-right text-gray-700">85</td>
-                        <td className="py-2 text-right text-gray-700">72</td>
-                        <td className="py-2 text-right text-gray-700">8</td>
-                        <td className="py-2 text-right text-gray-700">2</td>
+                              <td className="py-2 text-right text-gray-700">{batsman.runs}</td>
+                              <td className="py-2 text-right text-gray-700">{batsman.balls}</td>
+                              <td className="py-2 text-right text-gray-700">{batsman.fours}</td>
+                              <td className="py-2 text-right text-gray-700">{batsman.sixes}</td>
                         <td className="py-2 text-right text-gray-700">
-                          118.06
+                                {batsman.strikeRate.toFixed(2)}
                         </td>
                       </tr>
-                      <tr className="border-b border-gray-100">
-                        <td className="py-2 font-medium text-gray-900">
-                          Rohit Sharma
-                        </td>
-                        <td className="py-2 text-right text-gray-700">45</td>
-                        <td className="py-2 text-right text-gray-700">38</td>
-                        <td className="py-2 text-right text-gray-700">4</td>
-                        <td className="py-2 text-right text-gray-700">1</td>
-                        <td className="py-2 text-right text-gray-700">
-                          118.42
-                        </td>
-                      </tr>
+                          ))}
                     </tbody>
                   </table>
-                </div>
               </div>
 
-              {/* Team B Bowling */}
-              <div>
-                <h3 className="text-base font-semibold text-gray-900 mb-3">
-                  {mockMatch.teamB.name} Bowling
+                    <h3 className="text-base font-semibold text-gray-900 mb-3 mt-6">
+                      {inning.teamName} Bowling
                 </h3>
                 <div className="overflow-x-auto">
                   <table className="min-w-full text-sm">
@@ -592,30 +725,45 @@ const LiveMatchPage: React.FC<LiveMatchPageProps> = () => {
                       </tr>
                     </thead>
                     <tbody>
-                      <tr className="border-b border-gray-100">
+                          {inning.bowling.map((bowler) => (
+                            <tr key={bowler.playerId} className="border-b border-gray-100">
                         <td className="py-2 font-medium text-gray-900">
-                          Pat Cummins
+                                {bowler.playerName}
                         </td>
-                        <td className="py-2 text-right text-gray-700">8.1</td>
-                        <td className="py-2 text-right text-gray-700">0</td>
-                        <td className="py-2 text-right text-gray-700">45</td>
-                        <td className="py-2 text-right text-gray-700">2</td>
-                        <td className="py-2 text-right text-gray-700">5.51</td>
+                              <td className="py-2 text-right text-gray-700">{bowler.overs}</td>
+                              <td className="py-2 text-right text-gray-700">{bowler.maidens}</td>
+                              <td className="py-2 text-right text-gray-700">{bowler.runsConceded}</td>
+                              <td className="py-2 text-right text-gray-700">{bowler.wickets}</td>
+                              <td className="py-2 text-right text-gray-700">{bowler.economy.toFixed(2)}</td>
                       </tr>
-                      <tr className="border-b border-gray-100">
-                        <td className="py-2 font-medium text-gray-900">
-                          Mitchell Starc
-                        </td>
-                        <td className="py-2 text-right text-gray-700">8.0</td>
-                        <td className="py-2 text-right text-gray-700">0</td>
-                        <td className="py-2 text-right text-gray-700">52</td>
-                        <td className="py-2 text-right text-gray-700">1</td>
-                        <td className="py-2 text-right text-gray-700">6.50</td>
-                      </tr>
+                          ))}
                     </tbody>
                   </table>
                 </div>
               </div>
+                ))
+              ) : (
+                <div className="text-center py-8 text-gray-500">
+                  <FaSpinner className="animate-spin text-gray-400 text-2xl mx-auto mb-2" />
+                  <p className="text-sm">Loading scorecard data...</p>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Commentary Tab Content */}
+        {activeTab === "commentary" && (
+          <div className="space-y-4 sm:space-y-6">
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 sm:p-6">
+              <h2 className="text-lg sm:text-xl font-bold text-gray-900 mb-4">
+                Live Commentary
+              </h2>
+              <Commentary
+                entries={transformedCommentary}
+                activeFilter={commentaryFilter}
+                onFilterChange={setCommentaryFilter}
+              />
             </div>
           </div>
         )}
@@ -623,7 +771,8 @@ const LiveMatchPage: React.FC<LiveMatchPageProps> = () => {
         {/* Other tabs would be implemented here */}
         {activeTab !== "live" &&
           activeTab !== "matchinfo" &&
-          activeTab !== "scorecard" && (
+          activeTab !== "scorecard" &&
+          activeTab !== "commentary" && (
             <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 sm:p-8 transform transition-all duration-200 hover:shadow-md">
               <div className="text-center text-gray-500">
                 <div className="text-xl sm:text-2xl font-bold mb-2">
@@ -631,7 +780,7 @@ const LiveMatchPage: React.FC<LiveMatchPageProps> = () => {
                 </div>
                 <p className="text-sm sm:text-base">
                   This tab will be implemented with detailed {activeTab}{" "}
-                  information.
+                  information using live data.
                 </p>
               </div>
             </div>

@@ -16,6 +16,10 @@ import {
   FaPlay,
   FaPause,
   FaStop,
+  FaRocket,
+  FaTimes,
+  FaFlag,
+  FaBolt,
 } from "react-icons/fa";
 import { useMatches, useUpdateMatchStatus, useDeleteMatch } from "../../hooks";
 
@@ -79,19 +83,7 @@ const AdminMatches: React.FC = () => {
       statusData.currentBall = 0;
     }
 
-    updateStatusMutation.mutate(
-      { matchId, statusData },
-      {
-        onSuccess: () => {
-          toast.success("Match status updated successfully");
-        },
-        onError: (error: any) => {
-          toast.error(
-            error.response?.data?.message || "Failed to update match status"
-          );
-        },
-      }
-    );
+    updateStatusMutation.mutate({ matchId, statusData });
   };
 
   const handleFilterChange = (key: keyof MatchFilters, value: any) => {
@@ -328,6 +320,22 @@ const AdminMatches: React.FC = () => {
                             >
                               <FaEye className="h-4 w-4" />
                             </Link>
+                            {match.status === "in_progress" && (
+                              <Link
+                                to={`/admin/matches/${match._id}/scoring`}
+                                className="text-purple-600 hover:text-purple-900"
+                                title="Live Scoring"
+                              >
+                                <FaRocket className="h-4 w-4" />
+                              </Link>
+                            )}
+                            <Link
+                              to={`/admin/matches/${match._id}/powerplay`}
+                              className="text-orange-600 hover:text-orange-900"
+                              title="Powerplay Management"
+                            >
+                              <FaBolt className="h-4 w-4" />
+                            </Link>
                             <Link
                               to={`/admin/matches/${match._id}/edit`}
                               className="text-green-600 hover:text-green-900"
@@ -337,25 +345,51 @@ const AdminMatches: React.FC = () => {
                             </Link>
                             <button
                               onClick={() => handleDeleteMatch(match._id)}
-                              className="text-red-600 hover:text-red-900"
+                              className="text-red-600 hover:text-red-900 disabled:opacity-50"
                               title="Delete Match"
+                              disabled={deleteMatchMutation.isPending}
                             >
-                              <FaTrash className="h-4 w-4" />
+                              {deleteMatchMutation.isPending ? (
+                                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-red-600"></div>
+                              ) : (
+                                <FaTrash className="h-4 w-4" />
+                              )}
                             </button>
                           </div>
 
                           {/* Status Controls */}
                           <div className="flex items-center space-x-1 mt-2">
                             {match.status === "scheduled" && (
-                              <button
-                                onClick={() =>
-                                  handleStatusUpdate(match._id, "in_progress")
-                                }
-                                className="text-green-600 hover:text-green-900"
-                                title="Start Match"
-                              >
-                                <FaPlay className="h-3 w-3" />
-                              </button>
+                              <>
+                                <button
+                                  onClick={() =>
+                                    handleStatusUpdate(match._id, "in_progress")
+                                  }
+                                  className="text-green-600 hover:text-green-900 disabled:opacity-50"
+                                  title="Start Match"
+                                  disabled={updateStatusMutation.isPending}
+                                >
+                                  {updateStatusMutation.isPending ? (
+                                    <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-green-600"></div>
+                                  ) : (
+                                    <FaPlay className="h-3 w-3" />
+                                  )}
+                                </button>
+                                <button
+                                  onClick={() =>
+                                    handleStatusUpdate(match._id, "cancelled")
+                                  }
+                                  className="text-gray-600 hover:text-gray-900 disabled:opacity-50"
+                                  title="Cancel Match"
+                                  disabled={updateStatusMutation.isPending}
+                                >
+                                  {updateStatusMutation.isPending ? (
+                                    <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-gray-600"></div>
+                                  ) : (
+                                    <FaTimes className="h-3 w-3" />
+                                  )}
+                                </button>
+                              </>
                             )}
                             {match.status === "in_progress" && (
                               <>
@@ -363,32 +397,77 @@ const AdminMatches: React.FC = () => {
                                   onClick={() =>
                                     handleStatusUpdate(match._id, "completed")
                                   }
-                                  className="text-blue-600 hover:text-blue-900"
+                                  className="text-blue-600 hover:text-blue-900 disabled:opacity-50"
                                   title="Complete Match"
+                                  disabled={updateStatusMutation.isPending}
                                 >
-                                  <FaStop className="h-3 w-3" />
+                                  {updateStatusMutation.isPending ? (
+                                    <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-blue-600"></div>
+                                  ) : (
+                                    <FaStop className="h-3 w-3" />
+                                  )}
                                 </button>
                                 <button
                                   onClick={() =>
                                     handleStatusUpdate(match._id, "paused")
                                   }
-                                  className="text-yellow-600 hover:text-yellow-900"
+                                  className="text-yellow-600 hover:text-yellow-900 disabled:opacity-50"
                                   title="Pause Match"
+                                  disabled={updateStatusMutation.isPending}
                                 >
-                                  <FaPause className="h-3 w-3" />
+                                  {updateStatusMutation.isPending ? (
+                                    <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-yellow-600"></div>
+                                  ) : (
+                                    <FaPause className="h-3 w-3" />
+                                  )}
+                                </button>
+                                <button
+                                  onClick={() =>
+                                    handleStatusUpdate(match._id, "abandoned")
+                                  }
+                                  className="text-orange-600 hover:text-orange-900 disabled:opacity-50"
+                                  title="Abandon Match"
+                                  disabled={updateStatusMutation.isPending}
+                                >
+                                  {updateStatusMutation.isPending ? (
+                                    <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-orange-600"></div>
+                                  ) : (
+                                    <FaFlag className="h-3 w-3" />
+                                  )}
                                 </button>
                               </>
                             )}
                             {match.status === "paused" && (
-                              <button
-                                onClick={() =>
-                                  handleStatusUpdate(match._id, "in_progress")
-                                }
-                                className="text-green-600 hover:text-green-900"
-                                title="Resume Match"
-                              >
-                                <FaPlay className="h-3 w-3" />
-                              </button>
+                              <>
+                                <button
+                                  onClick={() =>
+                                    handleStatusUpdate(match._id, "in_progress")
+                                  }
+                                  className="text-green-600 hover:text-green-900 disabled:opacity-50"
+                                  title="Resume Match"
+                                  disabled={updateStatusMutation.isPending}
+                                >
+                                  {updateStatusMutation.isPending ? (
+                                    <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-green-600"></div>
+                                  ) : (
+                                    <FaPlay className="h-3 w-3" />
+                                  )}
+                                </button>
+                                <button
+                                  onClick={() =>
+                                    handleStatusUpdate(match._id, "abandoned")
+                                  }
+                                  className="text-orange-600 hover:text-orange-900 disabled:opacity-50"
+                                  title="Abandon Match"
+                                  disabled={updateStatusMutation.isPending}
+                                >
+                                  {updateStatusMutation.isPending ? (
+                                    <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-orange-600"></div>
+                                  ) : (
+                                    <FaFlag className="h-3 w-3" />
+                                  )}
+                                </button>
+                              </>
                             )}
                           </div>
                         </td>

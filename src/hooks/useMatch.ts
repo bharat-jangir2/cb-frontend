@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { matchesAPI } from "../services/api/matches.service";
+import { toast } from "react-hot-toast";
 
 export const useMatch = (matchId: string) => {
   return useQuery({
@@ -125,6 +126,13 @@ export const useUpdateMatchStatus = () => {
       queryClient.invalidateQueries({ queryKey: ["match", variables.matchId] });
       queryClient.invalidateQueries({ queryKey: ["matches"] });
       queryClient.invalidateQueries({ queryKey: ["live-matches"] });
+      toast.success("Match status updated successfully");
+    },
+    onError: (error: any) => {
+      console.error("Failed to update match status:", error);
+      toast.error(
+        error.response?.data?.message || "Failed to update match status"
+      );
     },
   });
 };
@@ -138,6 +146,13 @@ export const useDeleteMatch = () => {
       queryClient.invalidateQueries({ queryKey: ["matches"] });
       queryClient.invalidateQueries({ queryKey: ["live-matches"] });
       queryClient.removeQueries({ queryKey: ["match", matchId] });
+      toast.success("Match deleted successfully");
+    },
+    onError: (error: any) => {
+      console.error("Failed to delete match:", error);
+      toast.error(
+        error.response?.data?.message || "Failed to delete match"
+      );
     },
   });
 };

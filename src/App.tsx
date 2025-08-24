@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "react-hot-toast";
 import { useAuthStore } from "./stores/authStore";
+import { BallUpdateProvider } from "./contexts/BallUpdateContext";
 
 // Components
 import ProtectedRoute from "./components/common/ProtectedRoute";
@@ -56,6 +57,12 @@ import CreateMatch from "./pages/Admin/CreateMatch";
 import CreateTournament from "./pages/Admin/CreateTournament";
 import CreateSeries from "./pages/Admin/CreateSeries";
 import DebugAuth from "./components/DebugAuth";
+import TestPowerplay from "./pages/TestPowerplay";
+import PowerplayManagement from "./pages/Admin/PowerplayManagement";
+import InningsPage from "./pages/InningsPage";
+import TestBallUpdate from "./pages/TestBallUpdate";
+import TestPlayerManagement from "./pages/TestPlayerManagement";
+import TestEnhancedBallControl from "./pages/TestEnhancedBallControl";
 
 // Create a client
 const queryClient = new QueryClient({
@@ -142,12 +149,14 @@ function App() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <BrowserRouter>
-        <Routes>
+      <BallUpdateProvider>
+        <BrowserRouter>
+          <Routes>
           {/* Public Routes */}
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
           <Route path="/match/:id" element={<MatchDetail />} />
+          <Route path="/innings/:id" element={<InningsPage />} />
           <Route path="/series" element={<Series />} />
           <Route path="/fixtures" element={<Fixtures />} />
           <Route path="/stats" element={<Stats />} />
@@ -180,13 +189,15 @@ function App() {
             <Route path="matches/live" element={<LiveMatches />} />
             <Route path="matches/create" element={<CreateMatch />} />
             <Route path="matches/:id" element={<AdminMatchDetail />} />
+            <Route path="matches/:id/edit" element={<CreateMatch />} />
             <Route path="matches/:id/scoring" element={<MatchScoring />} />
             <Route path="matches/:id/stats" element={<MatchStats />} />
             <Route path="matches/:id/squad" element={<MatchSquad />} />
             <Route path="matches/:id/commentary" element={<MatchScoring />} />
             <Route path="matches/:id/venue" element={<MatchVenue />} />
-            <Route path="matches/:id/scorecard" element={<MatchScorecard />} />
-            <Route path="matches/:id/scoring" element={<Scoring />} />
+                         <Route path="matches/:id/scorecard" element={<MatchScorecard />} />
+             <Route path="matches/:id/scoring" element={<Scoring />} />
+             <Route path="matches/:id/powerplay" element={<PowerplayManagement />} />
             <Route path="teams" element={<AdminTeams />} />
             <Route path="teams/create" element={<AdminTeams />} />
             <Route path="teams/:id" element={<TeamDetail />} />
@@ -233,6 +244,7 @@ function App() {
             <Route index element={<Home />} />
             <Route path="matches" element={<Matches />} />
             <Route path="matches/:id" element={<MatchDetail />} />
+            <Route path="matches/:id/powerplay" element={<PowerplayManagement />} />
             <Route path="teams" element={<Teams />} />
             <Route path="news" element={<News />} />
             <Route path="tournaments" element={<Tournaments />} />
@@ -242,10 +254,17 @@ function App() {
             <Route path="premium" element={<Premium />} />
           </Route>
 
+                      {/* Test Routes */}
+            <Route path="/test-powerplay" element={<TestPowerplay />} />
+            <Route path="/test-ball-update" element={<TestBallUpdate />} />
+            <Route path="/test-player-management" element={<TestPlayerManagement />} />
+            <Route path="/test-enhanced-ball-control" element={<TestEnhancedBallControl />} />
+          
           {/* Fallback */}
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
-      </BrowserRouter>
+        </BrowserRouter>
+      </BallUpdateProvider>
 
       <Toaster
         position="top-right"
@@ -273,7 +292,7 @@ function App() {
       />
 
       {/* Debug component - remove in production */}
-      <DebugAuth />
+      {/* <DebugAuth /> */}
     </QueryClientProvider>
   );
 }

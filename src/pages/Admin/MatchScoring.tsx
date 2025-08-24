@@ -11,7 +11,6 @@ import {
   FaEdit,
   FaEye,
   FaUsers,
-  FaTrophy,
   FaClock,
   FaMapMarkerAlt,
   FaChartBar,
@@ -45,6 +44,8 @@ import { adminApi } from "../../services/admin";
 // Tab components
 import { ScoringTab } from "../../components/admin/ScoringTab";
 import { CommentaryTab } from "../../components/admin/CommentaryTab";
+import { EnhancedPowerplayManagement } from "../../components/admin/EnhancedPowerplayManagement";
+import { InningsManagement } from "../../components/innings/InningsManagement";
 
 interface MatchData {
   _id: string;
@@ -345,6 +346,8 @@ const VenueTab: React.FC<{ matchId: string; match: any }> = ({
   );
 };
 
+
+
 // Settings Tab Component
 const SettingsTab: React.FC<{ matchId: string; match: any }> = ({
   matchId,
@@ -368,6 +371,7 @@ const SettingsTab: React.FC<{ matchId: string; match: any }> = ({
 
   return (
     <div className="bg-white rounded-lg shadow-lg p-6">
+      <h1>bharat</h1>
       <div className="flex items-center justify-between mb-6">
         <h3 className="text-lg font-semibold flex items-center">
           <FaCog className="mr-2 text-purple-600" />
@@ -581,6 +585,11 @@ const MatchScoring: React.FC = () => {
 
   // Tab state
   const [activeTab, setActiveTab] = useState("scoring");
+  const [showTossModal, setShowTossModal] = useState(false);
+  const [tossData, setTossData] = useState({
+    winner: "",
+    decision: "bat" as "bat" | "bowl",
+  });
 
   // Fetch match data
   const { data: match, isLoading } = useQuery({
@@ -589,12 +598,23 @@ const MatchScoring: React.FC = () => {
     enabled: !!id,
   });
 
-  const matchData: any = match?.data;
+  const matchData: any = match;
+  
+  // Debug logging for match data
+  console.log('🔧 MatchScoring - matchData:', matchData);
+  console.log('🔧 MatchScoring - currentInnings:', matchData?.currentInnings);
+  console.log('🔧 MatchScoring - match status:', matchData?.status);
 
   // Update match status mutation
   const updateStatusMutation = useMutation({
-    mutationFn: (status: any) =>
-      adminApi.updateMatchStatus(id || "", { status }),
+    mutationFn: (statusData: {
+      status: "scheduled" | "toss" | "in_progress" | "paused" | "completed" | "cancelled" | "abandoned";
+      tossWinner?: string;
+      tossDecision?: "bat" | "bowl";
+      currentInnings?: number;
+      currentOver?: number;
+      currentBall?: number;
+    }) => adminApi.updateMatchStatus(id || "", statusData),
     onSuccess: () => {
       toast.success("Match status updated successfully");
       queryClient.invalidateQueries({ queryKey: ["match", id] });
@@ -606,8 +626,48 @@ const MatchScoring: React.FC = () => {
     },
   });
 
-  const handleStatusUpdate = (status: string) => {
-    updateStatusMutation.mutate(status);
+  const handleStatusUpdate = (status: "scheduled" | "toss" | "in_progress" | "paused" | "completed" | "cancelled" | "abandoned") => {
+    // Show toss modal if starting match without toss
+    if (status === "in_progress" && !matchData?.tossWinner) {
+      setShowTossModal(true);
+      return;
+    }
+
+    const statusData: {
+      status: "scheduled" | "toss" | "in_progress" | "paused" | "completed" | "cancelled" | "abandoned";
+      tossWinner?: string;
+      tossDecision?: "bat" | "bowl";
+      currentInnings?: number;
+      currentOver?: number;
+      currentBall?: number;
+    } = {
+      status,
+      currentInnings: matchData?.currentInnings || 1,
+      currentOver: matchData?.currentOver || 0,
+      currentBall: matchData?.currentBall || 0,
+    };
+
+    updateStatusMutation.mutate(statusData);
+  };
+
+  const handleTossSubmit = () => {
+    if (!tossData.winner) {
+      toast.error("Please select toss winner");
+      return;
+    }
+
+    const statusData = {
+      status: "in_progress" as const,
+      tossWinner: tossData.winner,
+      tossDecision: tossData.decision,
+      currentInnings: 1,
+      currentOver: 0,
+      currentBall: 0,
+    };
+
+    updateStatusMutation.mutate(statusData);
+    setShowTossModal(false);
+    setTossData({ winner: "", decision: "bat" });
   };
 
   const getStatusColor = (status: string | undefined) => {
@@ -648,6 +708,8 @@ const MatchScoring: React.FC = () => {
     { id: "squad", name: "Squad", icon: FaUsers },
     { id: "stats", name: "Stats", icon: FaChartBar },
     { id: "venue", name: "Venue", icon: FaMapMarkerAlt },
+    { id: "powerplay", name: "Powerplay", icon: FaBolt },
+    { id: "innings", name: "Innings", icon: FaUsers },
     { id: "settings", name: "Settings", icon: FaCog },
   ];
 
@@ -697,6 +759,13 @@ const MatchScoring: React.FC = () => {
                 className="px-3 py-1 bg-green-600 text-white text-sm rounded hover:bg-green-700"
               >
                 Scorecard
+              </button>
+              <button
+                onClick={() => setActiveTab("powerplay")}
+                className="px-3 py-1 bg-orange-600 text-white text-sm rounded hover:bg-orange-700 flex items-center"
+              >
+                <FaBolt className="mr-1" />
+                Powerplay
               </button>
               <button className="px-3 py-1 text-gray-600 hover:text-gray-900 text-sm">
                 Squad
@@ -820,10 +889,97 @@ const MatchScoring: React.FC = () => {
         {activeTab === "venue" && (
           <VenueTab matchId={id || ""} match={matchData} />
         )}
+                    {activeTab === "powerplay" && (
+              <EnhancedPowerplayManagement
+                matchId={id || ""}
+                currentInnings={matchData?.currentInnings || 1}
+              />
+            )}
+        {activeTab === "innings" && (
+          <InningsManagement 
+            matchId={id || ""} 
+            isAdmin={true}
+            teamAId={matchData?.teamAId?._id}
+            teamBId={matchData?.teamBId?._id}
+          />
+        )}
         {activeTab === "settings" && (
           <SettingsTab matchId={id || ""} match={matchData} />
         )}
       </div>
+
+      {/* Toss Modal */}
+      {showTossModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-md">
+            <h3 className="text-lg font-semibold mb-4">Toss Information</h3>
+            
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Toss Winner
+                </label>
+                <select
+                  value={tossData.winner}
+                  onChange={(e) => setTossData({ ...tossData, winner: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="">Select team</option>
+                  <option value={matchData?.teamAId?._id}>
+                    {matchData?.teamAId?.name}
+                  </option>
+                  <option value={matchData?.teamBId?._id}>
+                    {matchData?.teamBId?.name}
+                  </option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Toss Decision
+                </label>
+                <div className="flex space-x-4">
+                  <label className="flex items-center">
+                    <input
+                      type="radio"
+                      value="bat"
+                      checked={tossData.decision === "bat"}
+                      onChange={(e) => setTossData({ ...tossData, decision: e.target.value as "bat" | "bowl" })}
+                      className="mr-2"
+                    />
+                    <span>Bat</span>
+                  </label>
+                  <label className="flex items-center">
+                    <input
+                      type="radio"
+                      value="bowl"
+                      checked={tossData.decision === "bowl"}
+                      onChange={(e) => setTossData({ ...tossData, decision: e.target.value as "bat" | "bowl" })}
+                      className="mr-2"
+                    />
+                    <span>Bowl</span>
+                  </label>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex space-x-3 mt-6">
+              <button
+                onClick={handleTossSubmit}
+                className="flex-1 px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700"
+              >
+                Start Match
+              </button>
+              <button
+                onClick={() => setShowTossModal(false)}
+                className="flex-1 px-4 py-2 bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
